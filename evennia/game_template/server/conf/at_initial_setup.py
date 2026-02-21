@@ -16,4 +16,13 @@ does what you expect it to.
 
 
 def at_initial_setup():
-    pass
+    from evennia import create_script
+    from evennia.scripts.models import ScriptDB
+
+    from world.db_init import build_vertical_slice_world
+
+    build_vertical_slice_world()
+
+    exists = ScriptDB.objects.filter(db_key="db_combat").first()
+    if not exists:
+        create_script("world.combat.CombatHandler")

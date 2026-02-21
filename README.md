@@ -42,6 +42,13 @@ why not check out the [Evennia Beginner tutorial][beginnertutorial].
 
 Welcome!
 
+## DBForged Game Notes
+
+This repository includes a Dragon Ball inspired Evennia game slice under `evennia/game_template`.
+
+- Vertical slice guide: `evennia/game_template/README_VERTICAL_SLICE.md`
+- Vertical slice changelog: `evennia/game_template/CHANGELOG_VERTICAL_SLICE.md`
+
 
 [homepage]: https://www.evennia.com
 [docs]: https://www.evennia.com/docs/latest

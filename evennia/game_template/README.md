@@ -38,3 +38,8 @@ Evennia's documentation is here:
 https://github.com/evennia/evennia/wiki.
 
 Enjoy!
+
+# DBForged vertical slice docs
+
+- Implementation guide: `README_VERTICAL_SLICE.md`
+- Change log: `CHANGELOG_VERTICAL_SLICE.md`

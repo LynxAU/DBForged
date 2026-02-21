@@ -34,6 +34,16 @@ from evennia.settings_default import *
 # This is the name of your game. Make it catchy!
 SERVERNAME = {servername}
 
+# Keep combat loop available across reloads/restarts.
+GLOBAL_SCRIPTS = {
+    "db_combat": {
+        "typeclass": "world.combat.CombatHandler",
+        "interval": 1,
+        "persistent": True,
+        "start_delay": True,
+    }
+}
+
 
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
