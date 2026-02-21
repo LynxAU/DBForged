@@ -35,14 +35,14 @@ from evennia.settings_default import *
 SERVERNAME = {servername}
 
 # Keep combat loop available across reloads/restarts.
-GLOBAL_SCRIPTS = {
-    "db_combat": {
+GLOBAL_SCRIPTS = {{
+    "db_combat": {{
         "typeclass": "world.combat.CombatHandler",
         "interval": 1,
         "persistent": True,
         "start_delay": True,
-    }
-}
+    }}
+}}
 
 
 ######################################################################

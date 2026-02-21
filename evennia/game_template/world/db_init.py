@@ -2,8 +2,8 @@
 One-time world bootstrap for the DB vertical slice.
 """
 
-from evennia import create_object
 from evennia.objects.models import ObjectDB
+from evennia.utils.create import create_object
 
 
 def _get_room(key):
@@ -46,7 +46,7 @@ def _get_or_create_npc(key, typeclass, location, desc, attrs=None):
     npc = create_object(typeclass, key=key, location=location)
     npc.db.desc = desc
     for attr_key, attr_value in (attrs or {}).items():
-        npc.db[attr_key] = attr_value
+        setattr(npc.db, attr_key, attr_value)
     return npc
 
 

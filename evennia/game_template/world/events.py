@@ -31,7 +31,8 @@ def emit_event(receiver, event_type, payload):
 
 def emit_event_room(room, event_type, payload, exclude=None):
     packet = {"type": event_type, "ts": round(time.time(), 3), **payload}
-    room.msg_contents(EVENT_PREFIX + json.dumps(packet, separators=(",", ":")), exclude=exclude or [])
+    msg = EVENT_PREFIX + json.dumps(packet, separators=(",", ":"))
+    room.msg_contents(msg.replace("{", "{{").replace("}", "}}"), exclude=exclude or [])
 
 
 def emit_entity_delta(entity, recipients=None):
