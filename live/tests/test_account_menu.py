@@ -72,11 +72,25 @@ class TestDBForgedAccountMenu(EvenniaTest):
         self.assertIn("MAIN MENU", out)
         self.assertEqual(self.account._db_menu_state(self.session)["mode"], "main")
 
+    def test_enter_game_select_puppets_ready_character(self):
+        self._clear_account_characters()
+        char = self._create_account_character("Gohan")
+        self._clear_msgs()
+
+        self.account.execute_cmd("1", session=self.session)  # enter game menu
+        self.assertIn("ENTER GAME", self._all_msgs())
+        self._clear_msgs()
+
+        self.account.execute_cmd("1", session=self.session)  # select character
+        puppet = self.account.get_puppet(self.session)
+        self.assertIsNotNone(puppet)
+        self.assertEqual(puppet.id, char.id)
+
     def test_create_wizard_numeric_flow_and_back_cancel(self):
         self._start_create_wizard()
 
         # Step 1 prompt
-        self.assertIn("Name : enter your character name", self._last_msg())
+        self.assertIn("Name: Enter your character name.", self._last_msg())
         self.account.execute_cmd("c", session=self.session)
         self.assertIn("Cancel creation?", self._last_msg())
         self.account.execute_cmd("2", session=self.session)  # no, resume
@@ -106,7 +120,8 @@ class TestDBForgedAccountMenu(EvenniaTest):
         out = self._last_msg()
         self.assertIn("Step 5/7 - Skin Color", out)
         for label in DB_MENU_SKIN_PALETTES["namekian"]:
-            self.assertIn(label, out)
+            text = label[1] if isinstance(label, tuple) else label
+            self.assertIn(text, out)
 
     def test_review_confirmation_yes_creates_character_and_no_returns_to_race(self):
         self._clear_account_characters()

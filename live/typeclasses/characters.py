@@ -13,6 +13,7 @@ from evennia.objects.objects import DefaultCharacter
 from world.color_utils import colorize
 from world.events import emit_entity_delta
 from world.power import compute_current_pl
+from world.racials import ensure_character_racials
 from world.techniques import STARTER_TECHNIQUES
 
 from .objects import ObjectParent
@@ -34,6 +35,11 @@ RACE_DISPLAY_NAMES = {
     "frost_demon": "Frost Demon (Arctic conquerors with lethal cryokinesis)",
     "android": "Android (Mech-organic fusion, limitless potential)",
     "majin": "Majin (Shape-shifting warriors with regeneration)",
+    "half_breed": "Half-Breed (Hybrid Saiyan/Human latent power)",
+    "biodroid": "Biodroid (Adaptive bio-engineered evolution fighter)",
+    "grey": "Grey (Meditative powerhouse akin to Pride Trooper elites)",
+    "kai": "Kai (Divine being with superior ki attunement)",
+    "truffle": "Truffle/Tuffle (Tech-focused survivors and tactical specialists)",
 }
 
 # Race options for character creation
@@ -44,10 +50,12 @@ RACE_OPTIONS = {
     "frost_demon",
     "android",
     "bio_android",
+    "biodroid",
     "majin",
     "half_breed",  # Human/Saiyan hybrid
     "truffle",
     "grey",  # Jiren race
+    "kai",
 }
 SEX_OPTIONS = {"male", "female", "other"}
 
@@ -87,10 +95,14 @@ class Character(ObjectParent, DefaultCharacter):
         self.db.suppression_factor = self.db.suppression_factor or 0.35
         self.db.active_form = None
         self.db.form_mastery = self.db.form_mastery or {}
+        self.db.unlocked_forms = self.db.unlocked_forms or []
         self.db.tech_mastery = self.db.tech_mastery or {}
         self.db.tech_cooldowns = self.db.tech_cooldowns or {}
         self.db.known_techniques = self.db.known_techniques or list(STARTER_TECHNIQUES)
         self.db.equipped_techniques = self.db.equipped_techniques or list(STARTER_TECHNIQUES[:4])
+        self.db.racial_traits = self.db.racial_traits or []
+        self.db.lssj_state = self.db.lssj_state or {}
+        ensure_character_racials(self)
 
     def at_post_puppet(self, **kwargs):
         super().at_post_puppet(**kwargs)
@@ -104,9 +116,21 @@ class Character(ObjectParent, DefaultCharacter):
 
     def execute_cmd(self, raw_string, session=None, **kwargs):
         """
-        Intercept input only for explicitly active IC chargen prompts.
+        Intercept input for explicit modal IC flows (chargen, codex/info menus).
         """
         self._ensure_profile_defaults()
+        if self.has_account and getattr(self.ndb, "info_menu_state", None):
+            text = (raw_string or "").strip()
+            if text.lower() in {"quit", "@quit"}:
+                return super().execute_cmd(raw_string, session=session, **kwargs)
+            try:
+                from commands.db_commands import handle_ic_info_menu_input
+
+                if handle_ic_info_menu_input(self, text):
+                    return
+            except Exception:
+                # Fall through to normal command handling on menu-routing errors.
+                pass
         if self.has_account and self._is_ic_chargen_active():
             text = (raw_string or "").strip()
             if text.lower() in {"quit", "@quit"}:
@@ -139,6 +163,16 @@ class Character(ObjectParent, DefaultCharacter):
         if not self.attributes.has("race"):
             self.db.race = "saiyan"
             changed = True
+        if not self.attributes.has("unlocked_forms"):
+            self.db.unlocked_forms = []
+            changed = True
+        if not self.attributes.has("racial_traits"):
+            self.db.racial_traits = []
+            changed = True
+        if not self.attributes.has("lssj_state"):
+            self.db.lssj_state = {}
+            changed = True
+        ensure_character_racials(self)
         if changed or not self.db.sprite_id:
             self._refresh_sprite_id()
 

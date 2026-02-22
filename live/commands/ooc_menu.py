@@ -4,10 +4,9 @@ DBForged OOC account menu commands.
 
 from __future__ import annotations
 
+import evennia
 from evennia.commands.default import account as default_account
 from evennia.commands.cmdhandler import CMD_NOMATCH, CMD_NOINPUT
-from evennia.utils import logger
-from evennia.utils.evmenu import get_input
 from evennia.utils.utils import make_iter
 
 from typeclasses.characters import RACE_OPTIONS, SEX_OPTIONS, RACE_DISPLAY_NAMES
@@ -122,6 +121,18 @@ class _DBMenuCommand(default_account.COMMAND_DEFAULT_CLASS):
     locks = "cmd:is_ooc()"
     help_category = "General"
 
+    def _route_ic_codex_if_active(self):
+        sess = getattr(self, "session", None)
+        puppet = getattr(sess, "puppet", None) if sess else None
+        if not puppet or not getattr(getattr(puppet, "ndb", None), "info_menu_state", None):
+            return False
+        try:
+            from commands.db_commands import handle_ic_info_menu_input
+
+            return bool(handle_ic_info_menu_input(puppet, (self.raw_string or "").strip()))
+        except Exception:
+            return False
+
 
 class CmdDBMainMenu(_DBMenuCommand):
     """
@@ -132,6 +143,8 @@ class CmdDBMainMenu(_DBMenuCommand):
     aliases = ["mainmenu"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         # Use the accounts.py menu system
         self.account._db_menu_reset(session=self.session)
         self.account._db_menu_send(session=self.session)
@@ -146,11 +159,13 @@ class CmdDBMenuEnterGame(_DBMenuCommand):
     aliases = ["1", "play", "enter"]
 
     def func(self):
-        # Check if in create mode - if so, don't handle this command
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
-        if state.get("mode") == "create":
-            # In create mode - route to create input handler instead
-            self.account._db_menu_handle_create_input(self.raw_string.strip(), session=self.session)
+        mode = state.get("mode", "main")
+        if mode != "main":
+            # In submenu mode, route the raw input to the shared menu state machine.
+            self.account._db_menu_route_ooc_input(self.raw_string.strip(), session=self.session)
             return
         
         # Use the accounts.py menu system for character selection
@@ -168,19 +183,16 @@ class CmdDBMenuCreateCharacter(_DBMenuCommand):
     aliases = ["2", "createchar", "newchar"]
 
     def func(self):
-        # Check if already in create mode - if so, route to create input handler
-        state = self.account._db_menu_state(session=self.session)
-        if state.get("mode") == "create":
-            # Already in create mode - route input to create handler
-            self.account._db_menu_handle_create_input(self.raw_string.strip(), session=self.session)
+        if self._route_ic_codex_if_active():
             return
-        
-        # Start character creation
-        state.clear()
-        state["mode"] = "create"
-        state["step"] = 0
-        state["data"] = {}
-        self.account._db_menu_prompt_create(session=self.session)
+        state = self.account._db_menu_state(session=self.session)
+        mode = state.get("mode", "main")
+        if mode != "main":
+            self.account._db_menu_route_ooc_input(self.raw_string.strip(), session=self.session)
+            return
+
+        # Start character creation using the canonical account-menu helper (loads defaults/colors).
+        self.account._db_menu_start_create(session=self.session)
 
 
 class CmdDBMenuDeleteCharacter(_DBMenuCommand):
@@ -192,10 +204,12 @@ class CmdDBMenuDeleteCharacter(_DBMenuCommand):
     aliases = ["3", "deletechar", "delchar"]
 
     def func(self):
-        # Check if in create mode - if so, route to create input handler
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
-        if state.get("mode") == "create":
-            self.account._db_menu_handle_create_input(self.raw_string.strip(), session=self.session)
+        mode = state.get("mode", "main")
+        if mode != "main":
+            self.account._db_menu_route_ooc_input(self.raw_string.strip(), session=self.session)
             return
         
         # Normal delete character flow
@@ -211,26 +225,30 @@ class CmdDBMenuExit(_DBMenuCommand):
     aliases = ["4", "quit", "q"]
 
     def func(self):
-        # Check if in create mode - if so, route to create input handler
-        state = self.account._db_menu_state(session=self.session)
-        if state.get("mode") == "create":
-            self.account._db_menu_handle_create_input(self.raw_string.strip(), session=self.session)
+        if self._route_ic_codex_if_active():
             return
-        
+        state = self.account._db_menu_state(session=self.session)
+        mode = state.get("mode", "main")
+        if mode != "main":
+            self.account._db_menu_route_ooc_input(self.raw_string.strip(), session=self.session)
+            return
+
         # Execute quit through the account's sessions
         if self.session:
             self.session.msg("|yGoodbye!|n")
-        # Trigger the disconnect
-        from evennia.server.models import Session
+        # Disconnect only this session (prevents nuking multi-session accounts).
+        if self.session:
+            evennia.SESSION_HANDLER.disconnect(self.session, "Menu exit")
+            return
         for sess in self.account.sessions.all():
-            sess.disconnect()
+            evennia.SESSION_HANDLER.disconnect(sess, "Menu exit")
 
 
 class CmdDBMenuTextInput(_DBMenuCommand):
     """
     Catch-all for text input during menu navigation.
-    This handles any text that isn't a known command (using CMD_NOMATCH).
-    Only active when in "create" mode - routes to create input handler.
+    This handles text that isn't matched as a command and routes it to the
+    active OOC submenu state machine.
     """
 
     key = CMD_NOINPUT  # This is the special key for unmatched commands
@@ -238,15 +256,15 @@ class CmdDBMenuTextInput(_DBMenuCommand):
     locks = "cmd:all()"
     
     def func(self):
-        # Only handle input if in create mode
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         
-        if mode == "create":
-            # Route to create input handler
+        if mode != "main":
             raw = self.raw_string.strip()
             if raw:
-                self.account._db_menu_handle_create_input(raw, session=self.session)
+                self.account._db_menu_route_ooc_input(raw, session=self.session)
         else:
             # For other modes, just show invalid option
             self.msg("|rInvalid menu option.|n Type 1, 2, 3, or 4.", session=self.session)
@@ -261,6 +279,8 @@ class CmdDBMenuBack(_DBMenuCommand):
     aliases = ["b"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         
