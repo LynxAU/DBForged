@@ -96,6 +96,200 @@ def _boxed_ui(title, lines, width=70):
     return "\n".join(out)
 
 
+def _parchment_ui(title, lines, width=88):
+    """
+    Text UI styled like a readable codex/parchment page for info-heavy menus.
+    """
+    inner = max(48, width - 2)
+    top = "|y/" + ("~" * inner) + "\\|n"
+    bottom = "|y\\" + ("~" * inner) + "/|n"
+    hdr = f" {title} "
+    left = max(0, (inner - len(hdr)) // 2)
+    right = max(0, inner - len(hdr) - left)
+    out = [top, "|y:" + (" " * left) + f"|W{hdr}|n" + (" " * right) + ":|n", "|y:" + ("-" * inner) + ":|n"]
+    for raw in lines:
+        text = str(raw)
+        chunks = [text[i : i + inner] for i in range(0, len(text), inner)] or [""]
+        for chunk in chunks:
+            out.append("|y:|n" + f"{chunk.ljust(inner)}" + "|y:|n")
+    out.append(bottom)
+    return "\n".join(out)
+
+
+def _ic_menu_state(caller):
+    state = getattr(caller.ndb, "info_menu_state", None)
+    return state if isinstance(state, dict) else None
+
+
+def _clear_ic_menu(caller, *, msg=True):
+    if hasattr(caller.ndb, "info_menu_state"):
+        caller.ndb.info_menu_state = None
+    if msg:
+        caller.msg("|xClosed codex menu.|n")
+
+
+def _render_ic_menu(caller):
+    state = _ic_menu_state(caller)
+    if not state:
+        return False
+    view = state.get("view", "list")
+    items = state.get("items", [])
+    if not items:
+        _clear_ic_menu(caller, msg=False)
+        caller.msg("Nothing to display.")
+        return True
+
+    if view == "list":
+        lines = []
+        subtitle = state.get("subtitle")
+        if subtitle:
+            lines.append(subtitle)
+            lines.append("")
+        for idx, item in enumerate(items, start=1):
+            marker = item.get("marker", " ")
+            summary = item.get("summary", "")
+            line = f"|c[{idx}]|n {marker} |w{item['name']}|n"
+            if summary:
+                line += f" - {summary}"
+            lines.append(line)
+        lines.extend(["", "|wB|n Back/Close    |wX|n Exit    |w<number>|n Open entry"])
+        caller.msg(_parchment_ui(state.get("title", "Codex"), lines, width=96))
+        return True
+
+    if view == "detail":
+        idx = int(state.get("index", 0))
+        idx = max(0, min(idx, len(items) - 1))
+        state["index"] = idx
+        item = items[idx]
+        lines = [f"|wEntry|n {idx+1}/{len(items)}", ""]
+        for label, value in item.get("details", []):
+            lines.append(f"|w{label}|n: {value}")
+        lines.extend(["", "|wB|n Back to list    |wX|n Exit"])
+        caller.msg(_parchment_ui(item.get("detail_title") or item["name"], lines, width=96))
+        return True
+    return False
+
+
+def handle_ic_info_menu_input(caller, raw_text):
+    state = _ic_menu_state(caller)
+    if not state:
+        return False
+    text = (raw_text or "").strip()
+    key = text.lower()
+
+    if key in {"x", "exit", "q", "quit", "close"}:
+        _clear_ic_menu(caller)
+        return True
+
+    if key in {"b", "back"}:
+        if state.get("view") == "detail":
+            state["view"] = "list"
+            _render_ic_menu(caller)
+        else:
+            _clear_ic_menu(caller)
+        return True
+
+    if state.get("view") == "list" and text.isdigit():
+        idx = int(text) - 1
+        items = state.get("items", [])
+        if 0 <= idx < len(items):
+            state["view"] = "detail"
+            state["index"] = idx
+            _render_ic_menu(caller)
+        else:
+            caller.msg("|rThat number is not in the list.|n")
+            _render_ic_menu(caller)
+        return True
+
+    if state.get("view") == "detail":
+        caller.msg("|rUse B to go back or X to exit.|n")
+        _render_ic_menu(caller)
+        return True
+
+    caller.msg("|rEnter a number, B (back), or X (exit).|n")
+    _render_ic_menu(caller)
+    return True
+
+
+def _open_technique_codex_menu(caller):
+    known = list(caller.db.known_techniques or [])
+    equipped = set(caller.db.equipped_techniques or [])
+    items = []
+    for key in known:
+        data = TECHNIQUES.get(key)
+        if not data:
+            continue
+        lvl = _tech_mastery_level(caller, key)
+        marker = "@ " if key in equipped else "- "
+        items.append(
+            {
+                "key": key,
+                "name": data["name"],
+                "marker": marker.strip(),
+                "summary": f"ki {data.get('ki_cost','-')} | cd {data.get('cooldown','-')} | m{lvl}",
+                "detail_title": f"Technique: {data['name']}",
+                "details": [
+                    ("Key", key),
+                    ("Category", data.get("category", "misc")),
+                    ("Tags", ", ".join(data.get("tags", [])) or "None"),
+                    ("Ki Cost", data.get("ki_cost", 0)),
+                    ("Cooldown", data.get("cooldown", 0)),
+                    ("Mastery", lvl),
+                    ("Summary", data.get("ui_summary", "")),
+                    ("Unlock", get_unlock_label("technique", key)),
+                    ("Description", data.get("description", "")),
+                ],
+            }
+        )
+    items.sort(key=lambda i: (TECHNIQUES.get(i["key"], {}).get("category", "misc"), i["name"]))
+    caller.ndb.info_menu_state = {
+        "kind": "techniques",
+        "view": "list",
+        "title": "Technique Codex",
+        "subtitle": "Known abilities. @ = equipped.",
+        "items": items,
+    }
+    _render_ic_menu(caller)
+
+
+def _open_forms_codex_menu(caller):
+    race = caller.db.race or "unknown"
+    unlocked = set(caller.db.unlocked_forms or [])
+    active = caller.db.active_form
+    items = []
+    for key, form in list_forms_for_race(race):
+        marker = "@" if key == active else ("+" if key in unlocked else "-")
+        items.append(
+            {
+                "key": key,
+                "name": form["name"],
+                "marker": marker,
+                "summary": f"Tier {form.get('tier','?')} | {get_unlock_label('transformation', key)}",
+                "detail_title": f"Transformation: {form['name']}",
+                "details": [
+                    ("Key", key),
+                    ("Race", form.get("race", "unknown")),
+                    ("Tier", form.get("tier", "?")),
+                    ("Status", "active" if key == active else ("unlocked" if key in unlocked else "locked")),
+                    ("PL Multiplier", form.get("pl_multiplier", 1.0)),
+                    ("Speed Bias", form.get("speed_bias", 1.0)),
+                    ("Drain / Tick", form.get("drain_per_tick", 0)),
+                    ("Drain / Tech", form.get("drain_per_tech", 0)),
+                    ("Unlock", get_unlock_label("transformation", key)),
+                    ("Description", form.get("description", "")),
+                ],
+            }
+        )
+    caller.ndb.info_menu_state = {
+        "kind": "forms",
+        "view": "list",
+        "title": "Transformation Codex",
+        "subtitle": "Available forms for your race. @ = active, + = unlocked.",
+        "items": items,
+    }
+    _render_ic_menu(caller)
+
+
 class CmdDBStats(Command):
     key = "+stats"
     aliases = ["stats"]
@@ -448,32 +642,7 @@ class CmdListTech(Command):
 
     def func(self):
         caller = self.caller
-        query = (self.args or "").strip().lower()
-        known = caller.db.known_techniques or []
-        equipped = set(caller.db.equipped_techniques or [])
-        categories = {}
-        for key in known:
-            data = TECHNIQUES.get(key, {"name": key})
-            if query and query not in data["name"].lower() and query not in key:
-                continue
-            marker = "*" if key in equipped else " "
-            lvl = _tech_mastery_level(caller, key)
-            cat = data.get("category", "misc")
-            line = (
-                f"[{marker}] {data['name']} (ki {data.get('ki_cost', '-')}, cd {data.get('cooldown', '-')}, m{lvl}) "
-                f"- {data.get('ui_summary', '')} | {get_unlock_label('technique', key)}"
-            )
-            categories.setdefault(cat, []).append(line)
-        if not categories:
-            caller.msg("No known techniques match that filter.")
-            return
-        lines = []
-        for cat in sorted(categories.keys()):
-            lines.append(f"|w[{cat.upper()}]|n")
-            lines.extend(categories[cat])
-            lines.append("")
-        caller.msg("Known techniques:\n" + "\n".join(lines).rstrip())
-        caller.msg("`*` = equipped (max 4). Use `techui` for web list/filter/loadout view.")
+        _open_technique_codex_menu(caller)
 
 
 class CmdScan(Command):
@@ -618,15 +787,7 @@ class CmdForms(Command):
 
     def func(self):
         caller = self.caller
-        race = caller.db.race or "unknown"
-        rows = []
-        for key, form in list_forms_for_race(race):
-            unlocked = key in set(caller.db.unlocked_forms or [])
-            active = caller.db.active_form == key
-            src = get_unlock_label("transformation", key)
-            marker = "@" if active else ("+" if unlocked else "-")
-            rows.append(f"[{marker}] {form['name']} (t{form.get('tier','?')}) - {src}")
-        caller.msg("Forms:\n" + ("\n".join(rows) if rows else "No forms available for your race."))
+        _open_forms_codex_menu(caller)
         if caller.db.active_form == "legendary_super_saiyan":
             lssj = get_lssj_ui_state(caller)["modifiers"]
             caller.msg(
@@ -696,7 +857,7 @@ class CmdRacials(Command):
             extra_txt = f" [{', '.join(extra)}]" if extra else ""
             lines.append(f"[{marker}] {data['name']} - {data.get('ui_summary', data.get('description', ''))}{extra_txt}")
         caller.msg("Racial traits:\n" + "\n".join(lines))
-        caller.msg("Use `racial <name> [target]` for active racials.")
+        caller.msg("Racial traits are passive for now.")
 
 
 class CmdRacial(Command):
@@ -724,13 +885,6 @@ class CmdRacial(Command):
             caller.msg("Unknown racial.")
             return
         target = None
-        target_mode = ((racial.get("target_rules") or {}).get("target")) or "self"
-        if target_mode not in {"self"} and len(parts) > target_start:
-            target = _search_target(caller, " ".join(parts[target_start:]))
-            if not target:
-                return
-        elif target_mode not in {"self"} and getattr(caller.db, "combat_target", None):
-            target = ObjectDB.objects.filter(id=caller.db.combat_target).first()
         ok, msg, _stub = use_racial(caller, racial_key, target=target, context={"cmd": "racial"})
         caller.msg(f"|y{msg}|n" if ok else msg)
         if not ok:

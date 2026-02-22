@@ -1081,6 +1081,18 @@ class Account(DefaultAccount):
         Route input to the appropriate menu handler based on mode.
         """
         session = self._db_menu_canonical_session(session)
+        if session and getattr(session, "puppet", None):
+            puppet = session.puppet
+            if getattr(getattr(puppet, "ndb", None), "info_menu_state", None):
+                text = (raw_string or "").strip()
+                if text.lower() not in {"quit", "@quit"}:
+                    try:
+                        from commands.db_commands import handle_ic_info_menu_input
+
+                        if handle_ic_info_menu_input(puppet, text):
+                            return
+                    except Exception:
+                        pass
         # If this specific session is already puppeting, always route to normal IC processing.
         if session and self.get_puppet(session):
             return super().execute_cmd(raw_string, session=session, **kwargs)

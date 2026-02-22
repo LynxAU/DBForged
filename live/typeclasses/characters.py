@@ -116,9 +116,21 @@ class Character(ObjectParent, DefaultCharacter):
 
     def execute_cmd(self, raw_string, session=None, **kwargs):
         """
-        Intercept input only for explicitly active IC chargen prompts.
+        Intercept input for explicit modal IC flows (chargen, codex/info menus).
         """
         self._ensure_profile_defaults()
+        if self.has_account and getattr(self.ndb, "info_menu_state", None):
+            text = (raw_string or "").strip()
+            if text.lower() in {"quit", "@quit"}:
+                return super().execute_cmd(raw_string, session=session, **kwargs)
+            try:
+                from commands.db_commands import handle_ic_info_menu_input
+
+                if handle_ic_info_menu_input(self, text):
+                    return
+            except Exception:
+                # Fall through to normal command handling on menu-routing errors.
+                pass
         if self.has_account and self._is_ic_chargen_active():
             text = (raw_string or "").strip()
             if text.lower() in {"quit", "@quit"}:

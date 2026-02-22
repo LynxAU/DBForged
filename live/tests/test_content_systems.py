@@ -52,7 +52,7 @@ class TestContentSystems(TestCase):
         self.assertIn("kame_wave", char.db.known_techniques)
         self.assertTrue(payload["state"]["completed"])
 
-    def test_racial_passive_hooks_and_active_cooldown(self):
+    def test_racial_passive_hooks_and_forms_integration(self):
         char = _DummyChar(
             race="frost_demon",
             racial_traits=["frost_demon_form_discipline", "frost_demon_cruel_precision", "frost_demon_death_glare"],
@@ -72,11 +72,6 @@ class TestContentSystems(TestCase):
         # Base golden_frost drain is 9; Frost Demon passive should reduce it.
         self.assertLess(drain, 9)
 
-        ok, _msg, _ = use_racial(char, "frost_demon_death_glare", target=None, context={"test": True}, now=100.0)
-        self.assertTrue(ok)
-        self.assertLess(char.db.ki_current, 80)
-        self.assertIn("frost_demon_death_glare", char.db.racial_cooldowns)
-
-        ok, msg, _ = use_racial(char, "frost_demon_death_glare", target=None, context={"test": True}, now=101.0)
+        ok, msg, _ = use_racial(char, "frost_demon_death_glare", target=None, context={"test": True}, now=100.0)
         self.assertFalse(ok)
-        self.assertIn("cooldown", msg.lower())
+        self.assertIn("passive", msg.lower())

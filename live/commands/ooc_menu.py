@@ -121,6 +121,18 @@ class _DBMenuCommand(default_account.COMMAND_DEFAULT_CLASS):
     locks = "cmd:is_ooc()"
     help_category = "General"
 
+    def _route_ic_codex_if_active(self):
+        sess = getattr(self, "session", None)
+        puppet = getattr(sess, "puppet", None) if sess else None
+        if not puppet or not getattr(getattr(puppet, "ndb", None), "info_menu_state", None):
+            return False
+        try:
+            from commands.db_commands import handle_ic_info_menu_input
+
+            return bool(handle_ic_info_menu_input(puppet, (self.raw_string or "").strip()))
+        except Exception:
+            return False
+
 
 class CmdDBMainMenu(_DBMenuCommand):
     """
@@ -131,6 +143,8 @@ class CmdDBMainMenu(_DBMenuCommand):
     aliases = ["mainmenu"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         # Use the accounts.py menu system
         self.account._db_menu_reset(session=self.session)
         self.account._db_menu_send(session=self.session)
@@ -145,6 +159,8 @@ class CmdDBMenuEnterGame(_DBMenuCommand):
     aliases = ["1", "play", "enter"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         if mode != "main":
@@ -167,6 +183,8 @@ class CmdDBMenuCreateCharacter(_DBMenuCommand):
     aliases = ["2", "createchar", "newchar"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         if mode != "main":
@@ -186,6 +204,8 @@ class CmdDBMenuDeleteCharacter(_DBMenuCommand):
     aliases = ["3", "deletechar", "delchar"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         if mode != "main":
@@ -205,6 +225,8 @@ class CmdDBMenuExit(_DBMenuCommand):
     aliases = ["4", "quit", "q"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         if mode != "main":
@@ -234,6 +256,8 @@ class CmdDBMenuTextInput(_DBMenuCommand):
     locks = "cmd:all()"
     
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         
@@ -255,6 +279,8 @@ class CmdDBMenuBack(_DBMenuCommand):
     aliases = ["b"]
 
     def func(self):
+        if self._route_ic_codex_if_active():
+            return
         state = self.account._db_menu_state(session=self.session)
         mode = state.get("mode", "main")
         

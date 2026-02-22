@@ -39,6 +39,8 @@ def _trait(
     cooldown=0.0,
     prerequisites=None,
 ):
+    # For now, all racials are passive-only (design decision).
+    effective_kind = "passive"
     return (
         key,
         {
@@ -48,18 +50,19 @@ def _trait(
             "description": desc,
             "framework": "RacialTrait",
             "race": race,
-            "kind": kind,  # passive / active / trait
+            "kind": effective_kind,  # passive-only for now
+            "original_kind": kind,
             "category": "racial",
-            "tags": ["racial", kind] + list(tags),
+            "tags": ["racial", effective_kind] + list(tags),
             "resource_costs": {"ki": int(ki_cost)},
             "ki_cost": int(ki_cost),
             "cooldown": float(cooldown),
             "effect": effect,
             "scaling": effect.get("scaling", {}),
-            "target_rules": {"target": "self" if kind != "active" or effect.get("target") == "self" else effect.get("target", "enemy"), "range": effect.get("range", "self")},
+            "target_rules": {"target": "self", "range": effect.get("range", "self")},
             "prerequisites": prerequisites or {"race": race},
             "context_extras": effect.get("hooks", {}),
-            "ui_summary": summarize_effect({"effect": effect, "scaling": effect.get("scaling", {}), "tags": ["racial", kind] + list(tags)}),
+            "ui_summary": summarize_effect({"effect": effect, "scaling": effect.get("scaling", {}), "tags": ["racial", effective_kind] + list(tags)}),
             "ready_state": "integration_ready",
         },
     )
@@ -198,15 +201,7 @@ def can_use_racial(character, racial_key, now=None):
         return False, "Unknown racial.", None
     if racial_key not in set(get_character_racial_keys(character)):
         return False, "You do not have that racial trait.", racial
-    if racial.get("kind") != "active":
-        return False, "That racial is passive and does not need activation.", racial
-    cd = _racial_cd_remaining(character, racial_key, now=now)
-    if cd > 0:
-        return False, f"Racial on cooldown: {cd:.1f}s", racial
-    ki_cost = int(racial.get("ki_cost", 0) or 0)
-    if (character.db.ki_current or 0) < ki_cost:
-        return False, f"Not enough ki (need {ki_cost}).", racial
-    return True, "", racial
+    return False, "Racial traits are passive for now and do not need activation.", racial
 
 
 def use_racial(character, racial_key, target=None, context=None, now=None):
