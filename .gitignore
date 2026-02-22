@@ -69,6 +69,7 @@ docs/build
 .test_game_dir
 
 # DBForged local-only (repo trimmed to core keep-list)
+/.github/AGENT_WORKFLOW.md
 /bin/
 /.flake8
 /.release.sh
