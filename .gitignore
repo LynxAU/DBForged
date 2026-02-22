@@ -67,3 +67,17 @@ docs/build
 
 # Testing folder 
 .test_game_dir
+
+# DBForged local-only (repo trimmed to core keep-list)
+/bin/
+/.flake8
+/.release.sh
+/CHANGELOG.md
+/CODE_OF_CONDUCT.md
+/CODING_STYLE.md
+/CONTRIBUTING.md
+/Dockerfile
+/INSTALL.md
+/Makefile
+/SECURITY.md
+/setup.py
