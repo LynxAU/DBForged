@@ -17,6 +17,7 @@ Use this as the team-wide agent workflow prompt.
   - `pyproject.toml`
 - Do not push any other root-level files/folders unless explicitly approved.
 - Never push local/editor/temp files (`*.code-workspace`, scratch scripts, logs, personal notes, temp test files).
+- **Never delete, never upload, never modify your workspace file** (e.g., `MiniMax.code-workspace`). This file is local to each developer and should never be committed or modified.
 
 ---
 

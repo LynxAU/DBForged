@@ -71,6 +71,33 @@ docs/build
 # DBForged local-only (repo trimmed to core keep-list)
 /.github/AGENT_WORKFLOW.md
 /bin/
+
+# Unapproved root-level files (keep locally, never push)
+/MiniMax.code-workspace
+/README_GRAPHICS.md
+/generate_sprites.py
+/launch_game.bat
+/preview_logo.py
+/progress.md
+/run_test_combat.bat
+/test_combat_direct.py
+/test_combat_script.py
+/test_logo_preview.py
+/test_telnet_combat.py
+
+# Docs - only keep Makefile, make.bat, requirements.txt (build tools)
+# All other docs content is local
+/docs/DBFORGED*
+/docs/DBZ*
+/docs/LICENSE.txt
+/docs/checkenv.sh
+/docs/dbz-combat-webapp/
+/docs/deploy.py
+/docs/task_reference*
+/docs/pylib/
+/docs/source/
+/docs/README.md
+/docs/requirements.txt
 /.flake8
 /.release.sh
 /CHANGELOG.md
