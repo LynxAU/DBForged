@@ -25,7 +25,7 @@ several more options for customizing the Guest account system.
 from evennia.accounts.accounts import DefaultAccount, DefaultGuest
 from evennia.utils.utils import is_iter
 
-from typeclasses.characters import RACE_OPTIONS, SEX_OPTIONS
+from typeclasses.characters import SEX_OPTIONS
 
 DB_MENU_RACES = [
     ("saiyan", "Saiyan", "Powerful warrior race with exponential growth potential"),
@@ -33,7 +33,11 @@ DB_MENU_RACES = [
     ("namekian", "Namekian", "Regenerative alien race with Namekian Dragon summons"),
     ("frost_demon", "Frost Demon", "Ice-based race with freezing abilities and cunning"),
     ("android", "Android", "Synthetic human with unlimited energy and self-repair"),
+    ("bio_android", "Bio-Android", "Organic-synthetic hybrid like Cell with regenerative abilities"),
     ("majin", "Majin", "Magical race with shapeshifting and Buu-esque abilities"),
+    ("half_breed", "Half Breed", "Human-Saiyan hybrid with balanced potential"),
+    ("truffle", "Truffle", "Underground race with sensory abilities"),
+    ("grey", "Grey", "Powerful warrior race from Universe 11"),
 ]
 
 DB_MENU_HAIR_COLORS = [
@@ -73,6 +77,51 @@ DB_MENU_AURA_COLORS = [
     ("indigo", "Indigo", "Deep indigo spiritual energy"),
 ]
 
+# Color mapping for review display (maps color keys to Evennia color codes)
+DB_MENU_COLOR_CODES = {
+    # Hair colors
+    "black": "|x",      # Dark/Black
+    "brown": "|33",     # Brown
+    "blonde": "|y",    # Yellow/Gold
+    "red": "|r",        # Red
+    "blue": "|b",       # Blue
+    "white": "|w",      # White
+    "silver": "|7",     # Silver/Grey
+    "none": "|x",       # Dark (bald)
+    # Eye colors
+    "green": "|g",      # Green
+    "amber": "|33",     # Amber/Brown
+    "purple": "|m",     # Magenta/Purple
+    # Aura colors
+    "gold": "|y",       # Yellow/Gold
+    "pink": "|h",       # Light magenta
+    "violet": "|m",     # Magenta
+    "teal": "|c",       # Cyan
+    "indigo": "|4",     # Dark blue
+}
+
+
+def _get_color_code(color_key):
+    """Get Evennia color code for a color key."""
+    return DB_MENU_COLOR_CODES.get(color_key.lower(), "|w")
+
+
+def _format_name_gradient(name):
+    """Format name with yellow first part and red last 2 letters."""
+    if not name or len(name) < 2:
+        return f"|y{name}|n"
+    # First part in yellow, last 2 letters in red
+    first_part = name[:-2] if len(name) > 2 else name[0] if len(name) > 1 else ""
+    last_two = name[-2:]
+    return f"|y{first_part}|r{last_two}|n"
+
+
+def _format_color_display(color_key):
+    """Format a color name with its actual color."""
+    color_code = _get_color_code(color_key)
+    display = color_key.replace("_", " ").title()
+    return f"{color_code}{display}|n"
+
 DB_MENU_SKIN_PALETTES = {
     "saiyan": [
         ("light", "Light", "Light skin tone"),
@@ -108,12 +157,42 @@ DB_MENU_SKIN_PALETTES = {
         ("brown", "Brown", "Synthetic brown skin"),
         ("synthetic_pale", "Synthetic Pale", "Unusual pale synthetic skin"),
     ],
+    "bio_android": [
+        # Bio-Android like Cell - organic-looking with unique patterns
+        ("green", "Green", "Green bio-organic skin (Cell-like)"),
+        ("yellow", "Yellow", "Yellow bio-organic skin"),
+        ("teal", "Teal", "Teal bio-organic skin"),
+        ("lime", "Lime", "Lime green bio-organic skin"),
+        ("patterned", "Patterned", "Bio-metal patterned skin"),
+    ],
     "majin": [
         ("pink", "Pink", "Classic pink Majin skin"),
         ("rose", "Rose", "Rose-colored Majin skin"),
         ("magenta", "Magenta", "Vibrant magenta Majin skin"),
         ("lavender", "Lavender", "Soft lavender Majin skin"),
         ("blue", "Blue", "Rare blue Majin skin"),
+    ],
+    "half_breed": [
+        # Human-Saiyan hybrid - inherits both traits
+        ("light", "Light", "Light skin tone"),
+        ("tan", "Tan", "Warm tan complexion"),
+        ("bronze", "Bronze", "Bronzed golden skin"),
+        ("brown", "Brown", "Rich brown skin"),
+        ("dark", "Dark", "Deep dark skin"),
+    ],
+    "truffle": [
+        # Underground race - unique coloring
+        ("purple_green", "Purple-Green", "Truffle purple with green undertones"),
+        ("dark_purple", "Dark Purple", "Dark purple Truffle skin"),
+        ("moss_green", "Moss Green", "Moss green Truffle skin"),
+        ("brown_green", "Brown-Green", "Brown-green Truffle skin"),
+    ],
+    "grey": [
+        # Grey (Jiren race) - monochromatic
+        ("grey_light", "Light Grey", "Light grey skin"),
+        ("grey_silver", "Silver Grey", "Silver-grey skin"),
+        ("grey_dark", "Dark Grey", "Dark grey skin"),
+        ("grey_charcoal", "Charcoal", "Charcoal grey skin"),
     ],
 }
 
@@ -229,7 +308,7 @@ class Account(DefaultAccount):
 
     """
 
-    def _db_menu_box(self, title, lines, width=78):
+    def _db_menu_box(self, title, lines, width=120):
         inner = max(40, width - 2)
         top = f"|b+{'-' * inner}+|n"
         bottom = top
@@ -461,16 +540,36 @@ class Account(DefaultAccount):
 
     def _db_menu_choice_value(self, options, raw_text):
         text = (raw_text or "").strip()
-        if not text.isdigit():
-            return None, "Please enter a number."
-        idx = int(text)
-        if not (1 <= idx <= len(options)):
-            return None, "That number is not in the list."
-        item = options[idx - 1]
-        # Handle tuple format: (value, label, description) or (value, label) or just string
-        if isinstance(item, tuple):
-            return item[0], None
-        return str(item).lower().replace(" ", "_"), None
+        
+        # First try numeric input
+        if text.isdigit():
+            idx = int(text)
+            if not (1 <= idx <= len(options)):
+                return None, "That number is not in the list."
+            item = options[idx - 1]
+            # Handle tuple format: (value, label, description) or (value, label) or just string
+            if isinstance(item, tuple):
+                return item[0], None
+            return str(item).lower().replace(" ", "_"), None
+        
+        # Try text input - check for direct match or partial match
+        text_lower = text.lower()
+        for idx, item in enumerate(options, start=1):
+            # Handle tuple format: (value, label, description) or (value, label) or just string
+            if isinstance(item, tuple):
+                value, label = item[0], item[1]
+                # Check if text matches value, label, or is contained in them
+                if (text_lower == value.lower() or 
+                    text_lower == label.lower() or 
+                    text_lower in value.lower() or 
+                    text_lower in label.lower()):
+                    return value, None
+            else:
+                item_str = str(item)
+                if text_lower == item_str.lower() or text_lower in item_str.lower():
+                    return item_str.lower().replace(" ", "_"), None
+        
+        return None, "Please enter a number or a valid option name."
 
     def _db_menu_create_default_data(self):
         # Helper to extract value from tuple format (value, label, desc) or string
@@ -544,8 +643,10 @@ class Account(DefaultAccount):
         race_key = data.get("race") or DB_MENU_RACES[0][0]
         current = (data.get("skin_color") or "").replace("_", " ").lower()
         palette = self._db_menu_create_skin_palette(race_key)
-        if current not in {p.lower() for p in palette}:
-            data["skin_color"] = palette[0].lower().replace(" ", "_")
+        # palette is list of tuples (key, display_name, description)
+        palette_keys = {p[0].lower() for p in palette}
+        if current not in palette_keys:
+            data["skin_color"] = palette[0][0].replace(" ", "_")
 
     def _db_menu_start_create(self, session=None):
         state = self._db_menu_state(session=session)
@@ -629,14 +730,22 @@ class Account(DefaultAccount):
             current = self._db_menu_create_display(data, stepdef["key"])
             lines.extend(["", f"|xCurrent:|n {current}", "|wB|n = Back   |wC|n = Cancel"])
         else:  # review
+            # Format name with yellow/red gradient
+            name = data.get('name', '')
+            formatted_name = _format_name_gradient(name)
+            # Format colors with their actual colors
+            hair_color = _format_color_display(data.get('hair_color', ''))
+            eye_color = _format_color_display(data.get('eye_color', ''))
+            skin_color = _format_color_display(data.get('skin_color', ''))
+            aura_color = _format_color_display(data.get('aura_color', ''))
             lines.extend(
                 [
-                    f"|wName|n: {data.get('name', '')}",
+                    f"|wName|n: {formatted_name}",
                     f"|wRace|n: {self._db_menu_create_display(data, 'race')}",
-                    f"|wHair Color|n: {self._db_menu_create_display(data, 'hair_color')}",
-                    f"|wEye Color|n: {self._db_menu_create_display(data, 'eye_color')}",
-                    f"|wSkin Color|n: {self._db_menu_create_display(data, 'skin_color')}",
-                    f"|wAura Color|n: {self._db_menu_create_display(data, 'aura_color')}",
+                    f"|wHair Color|n: {hair_color}",
+                    f"|wEye Color|n: {eye_color}",
+                    f"|wSkin Color|n: {skin_color}",
+                    f"|wAura Color|n: {aura_color}",
                     "",
                     "Is this correct?",
                     " |c1|n yes",
@@ -653,16 +762,18 @@ class Account(DefaultAccount):
         data = state.get("data", {})
         step = int(state.get("step", 0))
         steps = self._db_menu_create_step_defs(data)
-        if text.lower() == "c":
-            self._db_menu_start_create_cancel_confirm(session=session)
-            return True
-        if text.lower() == "b":
+        
+        # Handle back/cancel commands
+        if text.lower() in {"b", "back"}:
             if step <= 0:
                 self._db_menu_reset(session=session)
                 self._db_menu_send(session=session)
                 return True
             state["step"] = step - 1
             self._db_menu_prompt_create(session=session)
+            return True
+        if text.lower() == "c":
+            self._db_menu_start_create_cancel_confirm(session=session)
             return True
 
         if step >= len(steps):
@@ -681,7 +792,7 @@ class Account(DefaultAccount):
                 return True
             desc = (
                 f"A {data['race'].replace('_', ' ')} fighter with "
-                f"{data['hair_style'].replace('_', ' ')} hair."
+                f"{data['hair_color'].replace('_', ' ')} hair and {data['eye_color'].replace('_', ' ')} eyes."
             )
             new_character, errors = self.create_character(
                 key=data["name"], description=desc, ip=(session.address if session else "")
@@ -759,13 +870,17 @@ class Account(DefaultAccount):
             return value, None
         if field == "race":
             value = (text or "").strip().lower().replace(" ", "_")
-            if value not in RACE_OPTIONS:
-                return None, f"Invalid race. Choose: {', '.join(sorted(RACE_OPTIONS))}"
+            # Get valid race values from DB_MENU_RACES (which has tuples with descriptions)
+            valid_races = {item[0] if isinstance(item, tuple) else item for item in DB_MENU_RACES}
+            if value not in valid_races:
+                return None, f"Invalid race. Choose from the available options."
             return value, None
         if field == "sex":
             value = (text or "").strip().lower()
-            if value not in SEX_OPTIONS:
-                return None, f"Invalid sex. Choose: {', '.join(sorted(SEX_OPTIONS))}"
+            # Get valid sex values from DB_MENU_RACES (handle both tuple and string formats)
+            valid_sexes = {item[0] if isinstance(item, tuple) else item for item in SEX_OPTIONS}
+            if value not in valid_sexes:
+                return None, f"Invalid sex. Choose from the available options."
             return value, None
         return None, "Invalid value."
 
@@ -928,16 +1043,28 @@ class Account(DefaultAccount):
     def execute_cmd(self, raw_string, session=None, **kwargs):
         """
         While OOC, the DBForged menu owns input until the player enters a character.
+        Route input to the appropriate menu handler based on mode.
         """
-        # Simple approach: if we're not puppeting ANY character, we're in OOC state
-        if not self.get_all_puppets():
-            # No puppets - we're definitely in OOC state
+        # Check puppet status
+        puppets = self.get_all_puppets()
+        
+        # If we're not puppeting ANY character, we're in OOC state
+        if not puppets:
             # Get session if not provided
             if not session:
                 sessions = self.sessions.get()
                 if sessions:
                     session = sessions[0]
             if session:
+                # Check menu state to route correctly
+                state = self._db_menu_state(session=session)
+                mode = state.get("mode", "main")
+                
+                # If in create mode, route all input to create handler
+                if mode == "create":
+                    return self._db_menu_route_ooc_input(raw_string, session=session)
+                
+                # Otherwise, normal routing
                 return self._db_menu_route_ooc_input(raw_string, session=session)
         
         # We have puppets, use normal command processing

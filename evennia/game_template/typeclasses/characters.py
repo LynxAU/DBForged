@@ -10,11 +10,24 @@ import time
 from evennia import search_tag
 from evennia.objects.objects import DefaultCharacter
 
+from world.color_utils import colorize
 from world.events import emit_entity_delta
 from world.power import compute_current_pl
 from world.techniques import STARTER_TECHNIQUES
 
 from .objects import ObjectParent
+
+CHARGEN_STEPS = [
+    ("hair_style", "Hair style", "Enter a hair style (e.g. spiky, short, ponytail):"),
+    ("hair_color", "Hair color", "Enter a hair color (e.g. black, blond, red):"),
+    ("eye_color", "Eye color", "Enter an eye color:"),
+    ("aura_color", "Aura color", "Enter an aura color:"),
+    ("race", "Race", "Choose race [saiyan/human/namekian/frost_demon/android/majin]:"),
+    ("sex", "Sex", "Choose sex [male/female/other]:"),
+]
+
+RACE_OPTIONS = {"saiyan", "human", "namekian", "frost_demon", "android", "majin"}
+SEX_OPTIONS = {"male", "female", "other"}
 
 
 class Character(ObjectParent, DefaultCharacter):
@@ -25,7 +38,13 @@ class Character(ObjectParent, DefaultCharacter):
     def at_object_creation(self):
         super().at_object_creation()
         self.db.race = self.db.race or "saiyan"
-        self.db.sprite_id = self.db.sprite_id or "sprite_player_default"
+        self.db.sex = self.db.sex or "other"
+        self.db.hair_style = self.db.hair_style or "spiky"
+        self.db.hair_color = self.db.hair_color or "black"
+        self.db.eye_color = self.db.eye_color or "black"
+        self.db.aura_color = self.db.aura_color or "white"
+        self.db.chargen_complete = bool(self.db.chargen_complete)
+        self._refresh_sprite_id()
         self.db.base_power = self.db.base_power or 120
         self.db.strength = self.db.strength or 10
         self.db.speed = self.db.speed or 10
@@ -52,10 +71,129 @@ class Character(ObjectParent, DefaultCharacter):
 
     def at_post_puppet(self, **kwargs):
         super().at_post_puppet(**kwargs)
+        self._ensure_profile_defaults()
+        if not self.db.chargen_complete:
+            self.start_chargen()
         emit_entity_delta(self)
 
     def at_post_move(self, source_location, move_type="move", **kwargs):
         super().at_post_move(source_location, move_type=move_type, **kwargs)
+        self._ensure_profile_defaults()
+        emit_entity_delta(self)
+
+    def execute_cmd(self, raw_string, session=None, **kwargs):
+        """
+        Intercept input for first-login chargen prompts.
+        """
+        self._ensure_profile_defaults()
+        if self.has_account and not self.db.chargen_complete:
+            text = (raw_string or "").strip()
+            if text.lower() in {"quit", "@quit"}:
+                return super().execute_cmd(raw_string, session=session, **kwargs)
+            self._process_chargen_input(text)
+            return
+        return super().execute_cmd(raw_string, session=session, **kwargs)
+
+    def _ensure_profile_defaults(self):
+        changed = False
+        defaults = {
+            "sex": "other",
+            "hair_style": "spiky",
+            "hair_color": "black",
+            "eye_color": "black",
+            "aura_color": "white",
+        }
+        if not self.attributes.has("chargen_complete"):
+            self.db.chargen_complete = False
+            changed = True
+        for key, value in defaults.items():
+            if not self.attributes.has(key):
+                setattr(self.db, key, value)
+                changed = True
+        if not self.attributes.has("race"):
+            self.db.race = "saiyan"
+            changed = True
+        if changed or not self.db.sprite_id:
+            self._refresh_sprite_id()
+
+    def _refresh_sprite_id(self):
+        race = (self.db.race or "humanoid").lower().replace(" ", "_")
+        sex = (self.db.sex or "other").lower().replace(" ", "_")
+        self.db.sprite_id = f"sprite_{race}_{sex}"
+
+    def _chargen_step_index(self):
+        return int(self.db.chargen_step_index or 0)
+
+    def start_chargen(self):
+        self.db.chargen_step_index = self.db.chargen_step_index or 0
+        self.msg("|yCharacter creation started.|n Answer the prompts to finish setup.")
+        self.msg("|xType `cancel` to keep defaults and finish quickly.|n")
+        self._show_chargen_prompt()
+
+    def _show_chargen_prompt(self):
+        idx = self._chargen_step_index()
+        if idx >= len(CHARGEN_STEPS):
+            self.finish_chargen()
+            return
+        _, label, prompt = CHARGEN_STEPS[idx]
+        current_key = CHARGEN_STEPS[idx][0]
+        current_val = getattr(self.db, current_key, "")
+        preview = colorize(current_val) if "color" in current_key else current_val
+        self.msg(f"|w{label}:|n {prompt} |x[current:|n {preview}|x]|n")
+
+    def _normalize_chargen_value(self, key, value):
+        value = (value or "").strip()
+        if not value:
+            return None, "Please enter a value."
+        if key in {"hair_style", "hair_color", "eye_color", "aura_color"}:
+            cleaned = value.lower().replace("-", "_").replace(" ", "_")
+            if len(cleaned) > 24:
+                return None, "Keep it under 24 characters."
+            return cleaned, None
+        if key == "race":
+            cleaned = value.lower().replace(" ", "_")
+            if cleaned not in RACE_OPTIONS:
+                return None, f"Invalid race. Choose: {', '.join(sorted(RACE_OPTIONS))}"
+            return cleaned, None
+        if key == "sex":
+            cleaned = value.lower()
+            if cleaned not in SEX_OPTIONS:
+                return None, f"Invalid sex. Choose: {', '.join(sorted(SEX_OPTIONS))}"
+            return cleaned, None
+        return value, None
+
+    def _process_chargen_input(self, text):
+        if not text:
+            self._show_chargen_prompt()
+            return
+        if text.lower() == "cancel":
+            self.finish_chargen()
+            return
+        idx = self._chargen_step_index()
+        if idx >= len(CHARGEN_STEPS):
+            self.finish_chargen()
+            return
+        key, label, _prompt = CHARGEN_STEPS[idx]
+        value, error = self._normalize_chargen_value(key, text)
+        if error:
+            self.msg(f"|r{error}|n")
+            self._show_chargen_prompt()
+            return
+        setattr(self.db, key, value)
+        self.db.chargen_step_index = idx + 1
+        shown = colorize(value) if "color" in key else value
+        self.msg(f"|gSet {label} to {shown}|g.|n")
+        self._show_chargen_prompt()
+
+    def finish_chargen(self):
+        self.db.chargen_complete = True
+        self.db.chargen_step_index = 0
+        self._refresh_sprite_id()
+        self.msg(
+            f"|gCharacter setup complete.|n {self.db.race.title()} / {self.db.sex.title()} / "
+            f"hair {self.db.hair_style} ({colorize(self.db.hair_color)}), "
+            f"eyes {colorize(self.db.eye_color)}, aura {colorize(self.db.aura_color)}."
+        )
         emit_entity_delta(self)
 
     def get_current_pl(self):

@@ -5,13 +5,32 @@
  */
 let defaultout_plugin = (function () {
 
+    var stripEventPayload = function (html) {
+        var text = $("<div>").html(html || "").text() || "";
+        var idx = text.indexOf("@event ");
+        if (idx < 0) {
+            return { hasEvent: false, html: html || "" };
+        }
+        var htmlStr = String(html || "");
+        var htmlIdx = htmlStr.indexOf("@event ");
+        if (htmlIdx < 0) {
+            return { hasEvent: true, html: "" };
+        }
+        return { hasEvent: true, html: htmlStr.slice(0, htmlIdx).trim() };
+    }
+
     //
     // By default add all unclaimed onText messages to the #messagewindow <div> and scroll
     var onText = function (args, kwargs) {
         // append message to default pane, then scroll so latest is at the bottom.
         var mwin = $("#messagewindow");
         var cls = kwargs == null ? 'out' : kwargs['cls'];
-        mwin.append("<div class='" + cls + "'>" + args[0] + "</div>");
+        var html = (args && args.length) ? args[0] : "";
+        var filtered = stripEventPayload(html);
+        if (filtered.hasEvent && !$.trim($("<div>").html(filtered.html).text())) {
+            return true;
+        }
+        mwin.append("<div class='" + cls + "'>" + filtered.html + "</div>");
         var scrollHeight = mwin.parent().parent().prop("scrollHeight");
         mwin.parent().parent().animate({ scrollTop: scrollHeight }, 0);
 

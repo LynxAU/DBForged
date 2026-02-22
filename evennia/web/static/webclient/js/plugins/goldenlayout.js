@@ -802,13 +802,34 @@ let goldenlayout = (function () {
 
     //
     //
+    var stripEventPayload = function (html) {
+        var text = $("<div>").html(html || "").text() || "";
+        var idx = text.indexOf("@event ");
+        if (idx < 0) {
+            return { hasEvent: false, html: html || "" };
+        }
+        var htmlStr = String(html || "");
+        var htmlIdx = htmlStr.indexOf("@event ");
+        if (htmlIdx < 0) {
+            return { hasEvent: true, html: "" };
+        }
+        return { hasEvent: true, html: htmlStr.slice(0, htmlIdx).trim() };
+    }
+
+    //
+    //
     var onText = function (args, kwargs) {
         // are any panes set to receive this text message?
         var divs = routeMessage(args, kwargs);
 
         var msgHandled = false;
         divs.forEach( function (div) {
-            let txt = args[0];
+            let filtered = stripEventPayload((args && args.length) ? args[0] : "");
+            if (filtered.hasEvent && !$.trim($("<div>").html(filtered.html).text())) {
+                msgHandled = true;
+                return;
+            }
+            let txt = filtered.html;
             // yes, so add this text message to the target div
             addMessageToPaneDiv( div, txt, kwargs );
             msgHandled = true;

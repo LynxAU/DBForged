@@ -33,6 +33,18 @@ from evennia.settings_default import *
 
 # This is the name of your game. Make it catchy!
 SERVERNAME = {servername}
+DBFORGED_VERSION = "0.1"
+
+# Use game-local cmdsets so DBForged commands mount correctly.
+CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"
+CMDSET_SESSION = "commands.default_cmdsets.SessionCmdSet"
+CMDSET_CHARACTER = "commands.default_cmdsets.CharacterCmdSet"
+CMDSET_ACCOUNT = "commands.default_cmdsets.AccountCmdSet"
+
+# Testing-friendly default during development: don't auto-puppet after login.
+AUTO_PUPPET_ON_LOGIN = False
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 0
 
 # Keep combat loop available across reloads/restarts.
 GLOBAL_SCRIPTS = {{

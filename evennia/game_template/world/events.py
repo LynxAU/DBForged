@@ -37,6 +37,14 @@ def emit_event_room(room, event_type, payload, exclude=None):
 
 def emit_entity_delta(entity, recipients=None):
     stats = _safe_stats(entity)
+    appearance = {
+        "race": entity.db.race or "unknown",
+        "sex": entity.db.sex or "other",
+        "hair_style": entity.db.hair_style or "spiky",
+        "hair_color": entity.db.hair_color or "black",
+        "eye_color": entity.db.eye_color or "black",
+        "aura_color": entity.db.aura_color or "white",
+    }
     payload = {
         "entity": {
             "id": entity.id,
@@ -45,6 +53,9 @@ def emit_entity_delta(entity, recipients=None):
             "room_name": entity.location.key if entity.location else None,
             "position": {"x": 0, "y": 0, "layer": 0},
             "sprite_id": entity.db.sprite_id or "sprite_humanoid_default",
+            "race": appearance["race"],
+            "sex": appearance["sex"],
+            "appearance": appearance,
             **stats,
         }
     }

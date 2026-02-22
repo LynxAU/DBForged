@@ -23,6 +23,8 @@ from commands.ooc_menu import (
     CmdDBMenuCreateCharacter,
     CmdDBMenuDeleteCharacter,
     CmdDBMenuExit,
+    CmdDBMenuBack,
+    CmdDBMenuTextInput,
 )
 
 
@@ -70,6 +72,8 @@ class AccountCmdSet(default_cmds.AccountCmdSet):
         self.add(CmdDBMenuCreateCharacter())
         self.add(CmdDBMenuDeleteCharacter())
         self.add(CmdDBMenuExit())
+        self.add(CmdDBMenuBack())
+        self.add(CmdDBMenuTextInput())
 
 
 class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
