@@ -147,15 +147,27 @@ class CombatHandler(DefaultScript):
             obj.db.charge_stacks = min(9, (obj.db.charge_stacks or 0) + 1)
             ki_gain = 3 + int((obj.db.ki_control or 0) * 0.08)
             obj.restore_ki(ki_gain)
-            obj.msg(
-                f"|cCharging...|n {aura_phrase(obj.db.aura_color).capitalize()} intensifies. "
-                f"Ki +{ki_gain}, charge stacks: {obj.db.charge_stacks}"
-            )
+            
+            # EPIC charging messages based on stack level
+            stacks = obj.db.charge_stacks
+            if stacks >= 7:
+                aura_desc = "BLINDING"
+                msg = f"|m>>> CHARGING UP! >>>|n {aura_phrase(obj.db.aura_color).upper()} aura blazes! Ki +{ki_gain}, charge stacks: {stacks}/9"
+            elif stacks >= 4:
+                aura_desc = "INTENSIFYING"
+                msg = f"|mCharging...|n {aura_phrase(obj.db.aura_color).capitalize()} intensifies. Ki +{ki_gain}, charge stacks: {stacks}/9"
+            else:
+                aura_desc = "growing"
+                msg = f"|cCharging...|n {aura_phrase(obj.db.aura_color)} aura {aura_desc}. Ki +{ki_gain}, charge stacks: {stacks}/9"
+            
+            obj.msg(msg)
             emit_entity_delta(obj)
 
     def _process_hostile_ai(self):
         hostile_npcs = ObjectDB.objects.filter(db_typeclass_path="typeclasses.npcs.HostileNPC")
         for npc in hostile_npcs:
+            # Get typed object, not raw DB object
+            npc = npc.get_typeclass()
             if npc.db.hp_current <= 0 or not npc.location:
                 continue
             if npc.has_status("stunned"):
@@ -175,6 +187,22 @@ class CombatHandler(DefaultScript):
                 engage(npc, target)
                 npc.location.msg_contents(f"|r{npc.key}|n lunges at {target.key}!")
                 emit_combat_event(npc.location, npc, target, {"subtype": "ai_engage"})
+
+        # Also process test combat NPCs
+        test_npcs = ObjectDB.objects.filter(db_is_test_dummy=True)
+        for npc in test_npcs:
+            if npc.db.hp_current <= 0 or not npc.location:
+                continue
+            if npc.has_status("stunned"):
+                continue
+            current_target = _obj(npc.db.combat_target) if npc.db.combat_target else None
+            if not current_target or current_target.location != npc.location:
+                continue
+            if current_target.db.hp_current <= 0:
+                continue
+            # Run the test NPC's AI
+            if hasattr(npc, 'run_test_ai'):
+                npc.run_test_ai()
 
     def _resolve_beams(self):
         now = time.time()
@@ -245,9 +273,23 @@ class CombatHandler(DefaultScript):
         win_gap = max(1.0, abs(a_score - b_score))
         damage = int(24 + (win_gap**0.35))
         dealt = loser.apply_damage(damage, source=winner, kind="beam_struggle")
-        winner.location.msg_contents(
-            f"|mBeam struggle!|n {winner.key} overpowers {loser.key}, dealing |r{dealt}|n!"
-        )
+        
+        # EPIC beam struggle messages
+        if win_gap > 50:
+            # Decisive victory
+            winner.location.msg_contents(
+                f"|m>>> BEAM CLASH! >>>|n {winner.key}'s |c{TECHNIQUES[beam_a['tech'] if beam_a['attacker'] == winner.id else beam_b['tech']]['name']}|n |woverpowers|n {loser.key} with overwhelming force! |r{dealt}|n damage!"
+            )
+        elif win_gap > 20:
+            # Clear victory
+            winner.location.msg_contents(
+                f"|m>>> BEAM CLASH! >>>|n {winner.key} pushes through {loser.key}'s beam! |r{dealt}|n damage!"
+            )
+        else:
+            # Close struggle
+            winner.location.msg_contents(
+                f"|mBeam struggle!|n {winner.key} overpowers {loser.key}, dealing |r{dealt}|n!"
+            )
         emit_vfx(winner.location, "vfx_beam_struggle", source=winner, target=loser)
         emit_combat_event(
             winner.location,
@@ -282,7 +324,15 @@ class CombatHandler(DefaultScript):
 
             damage = int(base * gap["damage_mult"])
             dealt = target.apply_damage(damage, source=attacker, kind="tick")
-            line = f"{attacker.key} clips {target.key} for |r{dealt}|n."
+            
+            # Epic combat messages based on damage
+            if dealt > 15:
+                line = f"|r!!! {attacker.key} CRUSHES {target.key} for {dealt}!!!|n"
+            elif dealt > 8:
+                line = f"|r{attacker.key} smashes {target.key} for {dealt}|n"
+            else:
+                line = f"|r{attacker.key} clips {target.key} for {dealt}|n"
+            
             room_lines.setdefault(attacker.location.id, [attacker.location, []])[1].append(line)
             emit_combat_event(
                 attacker.location,

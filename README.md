@@ -33,8 +33,8 @@ evennia start
 ```
 
 Connect:
-- Telnet client: `localhost:4000`
-- Web client: `http://localhost:4001`
+- Telnet client: `localhost:5153`
+- Web client: `http://localhost:5154`
 
 Stop / restart:
 

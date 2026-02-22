@@ -32,9 +32,17 @@ from evennia.settings_default import *
 ######################################################################
 
 # This is the name of your game. Make it catchy!
-SERVERNAME = "live"
+SERVERNAME = "MiniMax"
 DBFORGED_VERSION = "0.1"
 DBFORGED_EMIT_CLIENT_EVENTS = False
+
+# Port configuration - use 5143+ range for testing (different from Codex 5143-5149)
+TELNET_PORTS = [5153]
+WEBSERVER_PORTS = [(5154, 5158)]
+WEBSOCKET_CLIENT_PORT = 5155
+SSL_PORTS = [5156]
+SSH_PORTS = [5157]
+AMP_PORT = 5159
 
 # Use game-local cmdsets so DBForged commands mount correctly.
 CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"

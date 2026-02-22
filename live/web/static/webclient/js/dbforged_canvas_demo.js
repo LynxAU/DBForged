@@ -22,6 +22,8 @@
     observer: null,
     mappingConfig: null,
     activeScene: false,
+    tileSystemLoaded: false,
+    currentRoom: "Kame Island",
   };
 
   function log(...args) {
@@ -257,6 +259,13 @@
   }
 
   function drawBackground(ctx, w, h) {
+    // Try to use tile system first
+    if (demoState.tileSystemLoaded && window.DBForgedTileSystem && demoState.currentRoom) {
+      window.DBForgedTileSystem.render(ctx, demoState.currentRoom, 0, 0, w, h);
+      return;
+    }
+    
+    // Fallback: gradient background
     const g = ctx.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, "#0a1324");
     g.addColorStop(0.55, "#13203d");
@@ -358,6 +367,15 @@
     demoState.initialized = true;
     ensureOverlay();
     attachMessageObserver();
+
+    // Load tile system
+    try {
+      await window.DBForgedTileSystem?.loadTiles();
+      demoState.tileSystemLoaded = true;
+      log("Tile system loaded");
+    } catch (err) {
+      log("Tile system not available:", err.message);
+    }
 
     try {
       const animModule = await loadAnimModule();
