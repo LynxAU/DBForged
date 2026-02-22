@@ -2,7 +2,7 @@
 Dedicated commandset for DB systems.
 """
 
-from evennia import CmdSet
+from evennia.commands.cmdset import CmdSet
 
 from commands.db_commands import (
     CmdAttack,
@@ -12,9 +12,12 @@ from commands.db_commands import (
     CmdFlee,
     CmdHelpDB,
     CmdListTech,
+    CmdLogoTest,
+    CmdPlayerProfile,
     CmdScan,
     CmdSense,
     CmdSuppress,
+    CmdTeleport,
     CmdTech,
     CmdTrain,
     CmdTransform,
@@ -38,4 +41,7 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdSense())
         self.add(CmdSuppress())
         self.add(CmdTrain())
+        self.add(CmdPlayerProfile())
+        self.add(CmdTeleport())
+        self.add(CmdLogoTest())
         self.add(CmdHelpDB())

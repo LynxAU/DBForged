@@ -1,0 +1,49 @@
+"""
+Dedicated commandset for DB systems.
+"""
+
+from evennia.commands.cmdset import CmdSet
+
+from commands.db_commands import (
+    CmdAttack,
+    CmdCharge,
+    CmdDBStats,
+    CmdEquipTech,
+    CmdFlee,
+    CmdHelpDB,
+    CmdListTech,
+    CmdLogout,
+    CmdLogoTest,
+    CmdPlayerProfile,
+    CmdScan,
+    CmdSense,
+    CmdSuppress,
+    CmdTech,
+    CmdTrain,
+    CmdTransform,
+    CmdMap,
+)
+
+
+class DBSystemCmdSet(CmdSet):
+    key = "DBSystemCmdSet"
+    priority = 1
+
+    def at_cmdset_creation(self):
+        self.add(CmdDBStats())
+        self.add(CmdAttack())
+        self.add(CmdFlee())
+        self.add(CmdCharge())
+        self.add(CmdTransform())
+        self.add(CmdTech())
+        self.add(CmdEquipTech())
+        self.add(CmdListTech())
+        self.add(CmdScan())
+        self.add(CmdSense())
+        self.add(CmdSuppress())
+        self.add(CmdTrain())
+        self.add(CmdPlayerProfile())
+        self.add(CmdMap())
+        self.add(CmdLogoTest())
+        self.add(CmdLogout())
+        self.add(CmdHelpDB())

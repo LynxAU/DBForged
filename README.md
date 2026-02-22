@@ -1,70 +1,74 @@
-# Evennia MUD/MU\* Creation System ![][logo]
-[![unittestciimg]][unittestcilink] [![Coverage Status][coverimg]][coverlink] [![Pypi Version][pypibadge]][pypilink]
+# Dragonball Forged ⚡
 
+A Dragon Ball-themed MUD (Multi-User Dungeon) game built on the Evennia platform.
 
-[Evennia][homepage] is a modern library for creating [online multiplayer text
-games][wikimudpage] (MUD, MUSH, MUX, MUCK, MOO etc) in pure Python. It
-allows game creators to design and flesh out their ideas with great
-freedom.
+## About
 
-Evennia does not impose a particular style, genre or game mechanic. Instead it
-solves the boring networking and basic stuff all online games need. It provides
-a framework and tools for you to build the game you want. Coding in Evennia is
-done using normal Python modules imported into the server at runtime.
+Dragonball Forged is an immersive text-based RPG inspired by the Dragon Ball universe. Players can create characters from various races (Saiyan, Human, Namekian, etc.), train in martial arts, learn special techniques, and battle to become the strongest fighter in the universe.
 
-Evennia has [extensive documentation][docs]. It also has a very active community
-with [discussion forums][group] and a [discord server][chat] to help and support you!
+## Features
+
+- **Character Creation**: Create your fighter with customizable appearance (hair style, hair color, eye color, aura color)
+- **Racial Varieties**: Choose from Saiyan, Human, Namekian, and more races, each with unique abilities
+- **Combat System**: Real-time combat with special techniques and power levels
+- **Character Advancement**: Train to increase your stats and unlock new abilities
 
 ## Installation
 
-    pip install evennia
-        (windows users once: py -m evennia)
-        (note: Windows users with multiple Python versions should prefer `py -3.11` instead of `python` when creating virtual environments)
-    evennia --init mygame
-    cd mygame
-    evennia migrate
-    evennia start / stop / reload
+1. Install Evennia:
+   ```
+   pip install evennia
+   ```
 
-See [the full installation instructions][installation] for more help.
+2. Start the server:
+   ```
+   evennia start
+   ```
 
-Next, browse to `http://localhost:4001` or use your third-party mud client to
-connect to `localhost`, port `4000` to see your working (if empty) game!
+3. Connect to the game:
+   - Web client: http://localhost:4001
+   - MUD client: localhost:4000
 
-![screenshot][screenshot]
-_A game website is created automatically. Connect to your Evennia game from your
-web browser as well as using traditional third-party clients_.
+## Quick Start
 
-## Where to go next
+1. Create an account with `create <username> <password>`
+2. Create your character using the in-game character creation wizard
+3. Start your adventure!
 
-If this piqued your interest, there is a [lengthier introduction][introduction] to read. You
-can also read our [Evennia in pictures][evenniapictures] overview. After that,
-why not check out the [Evennia Beginner tutorial][beginnertutorial].
+## Community
 
-Welcome!
+Join the adventure and become the legend!
 
-## DBForged Game Notes
+---
 
-This repository includes a Dragon Ball inspired Evennia game slice under `evennia/game_template`.
+# Changelog
 
-- Vertical slice guide: `evennia/game_template/README_VERTICAL_SLICE.md`
-- Vertical slice changelog: `evennia/game_template/CHANGELOG_VERTICAL_SLICE.md`
+All notable changes to this project will be documented in this file.
 
+## [Unreleased]
 
-[homepage]: https://www.evennia.com
-[docs]: https://www.evennia.com/docs/latest
-[screenshot]: https://user-images.githubusercontent.com/294267/205434941-14cc4f59-7109-49f7-9d71-0ad3371b007c.jpg
-[logo]: https://raw.githubusercontent.com/evennia/evennia/refs/heads/main/evennia/web/static/website/images/evennia_logo.png
-[unittestciimg]: https://github.com/evennia/evennia/workflows/test-suite/badge.svg
-[unittestcilink]: https://github.com/evennia/evennia/actions?query=workflow%3Atest-suite
-[coverimg]: https://coveralls.io/repos/github/evennia/evennia/badge.svg?branch=main
-[coverlink]: https://coveralls.io/github/evennia/evennia?branch=main
-[pypibadge]: https://img.shields.io/pypi/v/evennia?color=blue
-[pypilink]: https://pypi.org/project/evennia/
-[introduction]: https://www.evennia.com/docs/latest/Evennia-Introduction.html
-[license]: https://www.evennia.com/docs/latest/Licensing.html
-[group]: https://github.com/evennia/evennia/discussions
-[chat]: https://discord.gg/AJJpcRUhtF
-[wikimudpage]: http://en.wikipedia.org/wiki/Multi-user_dungeon
-[evenniapictures]: https://www.evennia.com/docs/latest/Evennia-In-Pictures.html
-[beginnertutorial]: https://www.evennia.com/docs/latest/Howtos/Beginner-Tutorial/Beginner-Tutorial-Overview.html
-[installation]: https://www.evennia.com/docs/latest/Setup/Setup-Overview.html#installation-and-running
+### Added
+- Section 7 review part now displays colors properly with correct color formatting for hair, eye, and aura colors
+- Added color utility functions in `world/color_utils.py` for consistent color display
+- Custom connection screen logo with Dragonball Forged branding (yellow Drag, orange asterisk, red nball Forged)
+- Debug logging in character creation to help diagnose save issues
+- Added missing colors (brown, hazel, bronze, none) to ANSI color map
+
+### Fixed
+- Character creator now properly colorizes color names in the review section
+- Fixed eye color, hair color, and aura color display to use proper Evennia color codes
+- Fixed color mapping for various color names including orange, bronze, and silver
+
+### Changed
+- Updated connection screen to show "Welcome to Drag(*)nball Forged" with custom coloring
+- Improved character creation workflow with better error handling
+
+## [0.1.0] - Initial Release
+
+### Added
+- Initial Dragonball Forged game template
+- Basic character creation system with race, sex, hair style, hair color, eye color, and aura color selection
+- Saiyan, Human, and Namekian races
+- Basic combat system
+- Web client support
+- Evennia base framework

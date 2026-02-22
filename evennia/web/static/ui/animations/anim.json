@@ -1,0 +1,731 @@
+{
+  "pack_name": "goku_placeholder_pack_generated",
+  "sprite_id": "goku_placeholder",
+  "version": 1,
+  "default_fps": 12,
+  "default_loop": true,
+  "animations": {
+    "base_beam_row01": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row01_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row01_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row01_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row01_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row01_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row01_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row01_07.png",
+          "order": 6
+        },
+        {
+          "file": "base_beam_row01_08.png",
+          "order": 7
+        },
+        {
+          "file": "base_beam_row01_09.png",
+          "order": 8
+        }
+      ]
+    },
+    "base_beam_row02": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row02_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row02_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row02_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row02_04.png",
+          "order": 3
+        }
+      ]
+    },
+    "base_beam_row03": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row03_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row03_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row03_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row03_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row03_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row03_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row03_07.png",
+          "order": 6
+        },
+        {
+          "file": "base_beam_row03_08.png",
+          "order": 7
+        },
+        {
+          "file": "base_beam_row03_09.png",
+          "order": 8
+        }
+      ]
+    },
+    "base_beam_row04": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row04_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row04_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row04_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row04_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row04_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row04_06.png",
+          "order": 5
+        }
+      ]
+    },
+    "base_beam_row05": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row05_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row05_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row05_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row05_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row05_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row05_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row05_07.png",
+          "order": 6
+        },
+        {
+          "file": "base_beam_row05_08.png",
+          "order": 7
+        }
+      ]
+    },
+    "base_beam_row06": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row06_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row06_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row06_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row06_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row06_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row06_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row06_07.png",
+          "order": 6
+        }
+      ]
+    },
+    "base_beam_row07": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row07_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row07_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row07_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row07_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row07_05.png",
+          "order": 4
+        }
+      ]
+    },
+    "base_beam_row08": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row08_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row08_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row08_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row08_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row08_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row08_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row08_07.png",
+          "order": 6
+        }
+      ]
+    },
+    "base_beam_row09": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row09_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row09_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row09_03.png",
+          "order": 2
+        }
+      ]
+    },
+    "base_beam_row10": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row10_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row10_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row10_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row10_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row10_05.png",
+          "order": 4
+        }
+      ]
+    },
+    "base_beam_row11": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row11_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row11_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row11_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row11_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row11_05.png",
+          "order": 4
+        }
+      ]
+    },
+    "base_beam_row12": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row12_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row12_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row12_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row12_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row12_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row12_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row12_07.png",
+          "order": 6
+        },
+        {
+          "file": "base_beam_row12_08.png",
+          "order": 7
+        }
+      ]
+    },
+    "base_beam_row13": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row13_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row13_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row13_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row13_04.png",
+          "order": 3
+        }
+      ]
+    },
+    "base_beam_row14": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row14_01.png",
+          "order": 0
+        }
+      ]
+    },
+    "base_beam_row15": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row15_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row15_02.png",
+          "order": 1
+        }
+      ]
+    },
+    "base_beam_row16": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row16_01.png",
+          "order": 0
+        }
+      ]
+    },
+    "base_beam_row17": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row17_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row17_02.png",
+          "order": 1
+        }
+      ]
+    },
+    "base_beam_row18": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row18_01.png",
+          "order": 0
+        }
+      ]
+    },
+    "base_beam_row19": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row19_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row19_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row19_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row19_04.png",
+          "order": 3
+        }
+      ]
+    },
+    "base_beam_row20": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row20_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row20_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row20_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row20_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row20_05.png",
+          "order": 4
+        }
+      ]
+    },
+    "base_beam_row21": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row21_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row21_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row21_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row21_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row21_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row21_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row21_07.png",
+          "order": 6
+        },
+        {
+          "file": "base_beam_row21_08.png",
+          "order": 7
+        }
+      ]
+    },
+    "base_beam_row22": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row22_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row22_02.png",
+          "order": 1
+        }
+      ]
+    },
+    "base_beam_row23": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row23_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row23_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row23_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row23_04.png",
+          "order": 3
+        },
+        {
+          "file": "base_beam_row23_05.png",
+          "order": 4
+        },
+        {
+          "file": "base_beam_row23_06.png",
+          "order": 5
+        },
+        {
+          "file": "base_beam_row23_07.png",
+          "order": 6
+        }
+      ]
+    },
+    "base_beam_row24": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row24_01.png",
+          "order": 0
+        },
+        {
+          "file": "base_beam_row24_02.png",
+          "order": 1
+        },
+        {
+          "file": "base_beam_row24_03.png",
+          "order": 2
+        },
+        {
+          "file": "base_beam_row24_04.png",
+          "order": 3
+        }
+      ]
+    },
+    "base_beam_row25": {
+      "fps": 12,
+      "loop": true,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "frames": [
+        {
+          "file": "base_beam_row25_01.png",
+          "order": 0
+        }
+      ]
+    }
+  }
+}
