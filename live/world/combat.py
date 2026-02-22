@@ -13,7 +13,7 @@ from evennia.utils import logger
 
 from world.color_utils import aura_phrase
 from world.events import emit_combat_event, emit_entity_delta, emit_vfx
-from world.forms import FORMS
+from world.forms import FORMS, get_form_tick_drain
 from world.power import pl_gap_effect
 from world.techniques import TECHNIQUES
 
@@ -310,9 +310,9 @@ class CombatHandler(DefaultScript):
             if not form:
                 obj.db.active_form = None
                 continue
-            mastery = (obj.db.form_mastery or {}).get(form_key, 0)
-            reduction = min(0.7, mastery * form.get("mastery_drain_reduction", 0.0))
-            tick_drain = max(1, int(form.get("drain_per_tick", 1) * (1.0 - reduction)))
+            tick_drain, _debug = get_form_tick_drain(obj, form_key)
+            if tick_drain <= 0:
+                continue
             if not obj.spend_ki(tick_drain):
                 obj.msg("|rYou lack the ki to sustain your transformation and revert.|n")
                 obj.db.active_form = None

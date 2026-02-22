@@ -338,11 +338,42 @@ class Account(DefaultAccount):
         return store
 
     def _db_menu_state(self, session=None):
-        sid = getattr(session, "sessid", 0) if session else 0
         states = self._db_menu_states()
+        active_sessions = list(self.sessions.all())
+        active_sessids = {getattr(s, "sessid", None) for s in active_sessions}
+        active_sessids.discard(None)
+        # Clean up stale per-session menu state entries across reconnects.
+        for sid in list(states.keys()):
+            if sid != 0 and sid not in active_sessids:
+                states.pop(sid, None)
+        if not session:
+            if len(active_sessions) == 1:
+                session = active_sessions[0]
+            elif len(states) == 1:
+                # Reuse the only active menu state when session is omitted by the caller.
+                return next(iter(states.values()))
+        if not session:
+            sessions = list(self.sessions.all())
+            if len(sessions) == 1:
+                session = sessions[0]
+        sid = getattr(session, "sessid", 0) if session else 0
         if sid not in states:
             states[sid] = {"mode": "main"}
         return states[sid]
+
+    def _db_menu_canonical_session(self, session=None):
+        """
+        Resolve a session-like object to the live session instance attached to this account.
+        """
+        if not session:
+            return session
+        sessid = getattr(session, "sessid", None)
+        if sessid is None:
+            return session
+        for live_sess in self.sessions.all():
+            if getattr(live_sess, "sessid", None) == sessid:
+                return live_sess
+        return session
 
     def _db_menu_reset(self, session=None):
         state = self._db_menu_state(session=session)
@@ -384,7 +415,7 @@ class Account(DefaultAccount):
             "|c3|n - |wDelete Character|n",
             "|c4|n - |wExit|n",
             "",
-            "|xEnter 1, 2, 3, or 4.|n",
+            "|wEnter 1, 2, 3, or 4.|n",
         ]
         if session:
             self._db_menu_state(session=session)["menu_sent"] = True
@@ -681,7 +712,7 @@ class Account(DefaultAccount):
     def _db_menu_create_step_defs(self, data):
         race_key = (data.get("race") or DB_MENU_RACES[0][0]).lower()
         return [
-            {"key": "name", "kind": "text", "title": "Step 1/7 - Name", "prompt": "Name : enter your character name"},
+            {"key": "name", "kind": "text", "title": "Step 1/7 - Name", "prompt": "Name: Enter your character name."},
             {"key": "race", "kind": "choice", "title": "Step 2/7 - Race", "prompt": "Choose a race:", "options": DB_MENU_RACES},
             {"key": "hair_color", "kind": "choice", "title": "Step 3/7 - Hair Color", "prompt": "Choose hair color:", "options": DB_MENU_HAIR_COLORS},
             {"key": "eye_color", "kind": "choice", "title": "Step 4/7 - Eye Color", "prompt": "Choose eye color:", "options": DB_MENU_EYE_COLORS},
@@ -748,8 +779,8 @@ class Account(DefaultAccount):
                     f"|wAura Color|n: {aura_color}",
                     "",
                     "Is this correct?",
-                    " |c1|n yes",
-                    " |c2|n no",
+                    " |c1|n Yes",
+                    " |c2|n No",
                     "",
                     "|wB|n = Back   |wC|n = Cancel",
                 ]
@@ -998,11 +1029,18 @@ class Account(DefaultAccount):
             self.msg(f"|r{err}|n", session=session)
             self._db_menu_render_charlist(session=session, for_delete=False)
             return True
+        # Resolve to the canonical live session object attached to this account.
+        session = self._db_menu_canonical_session(session)
         self._db_menu_reset(session=session)
         try:
-            self.puppet_object(session, char)
+            # Prefer the built-in IC command path, which handles session binding consistently.
+            super().execute_cmd(f"ic {char.key}", session=session)
+            if not self.get_puppet(session):
+                self.puppet_object(session, char)
+            if not self.get_puppet(session):
+                raise RuntimeError("Puppeting did not attach to this session.")
             self.db._last_puppet = char
-        except RuntimeError as exc:
+        except Exception as exc:
             self.msg(f"|rYou cannot enter |w{char.key}|n: {exc}|n", session=session)
             self._db_menu_send(session=session)
         return True
@@ -1033,18 +1071,20 @@ class Account(DefaultAccount):
     def at_post_login(self, session=None, **kwargs):
         super().at_post_login(session=session, **kwargs)
         # Force the menu to take over immediately after login and clear the connect screen.
-        if session and not self.get_puppet(session):
-            existing_state = self._db_menu_state(session=session)
-            already_sent = bool(existing_state.get("menu_sent"))
+        if session:
             self._db_menu_reset(session=session)
-            if not already_sent:
-                self._db_menu_send(session=session)
+            self._db_menu_send(session=session)
 
     def execute_cmd(self, raw_string, session=None, **kwargs):
         """
         While OOC, the DBForged menu owns input until the player enters a character.
         Route input to the appropriate menu handler based on mode.
         """
+        session = self._db_menu_canonical_session(session)
+        # If this specific session is already puppeting, always route to normal IC processing.
+        if session and self.get_puppet(session):
+            return super().execute_cmd(raw_string, session=session, **kwargs)
+
         # Check puppet status
         puppets = self.get_all_puppets()
         
@@ -1052,7 +1092,7 @@ class Account(DefaultAccount):
         if not puppets:
             # Get session if not provided
             if not session:
-                sessions = self.sessions.get()
+                sessions = list(self.sessions.all())
                 if sessions:
                     session = sessions[0]
             if session:
@@ -1067,7 +1107,7 @@ class Account(DefaultAccount):
                 # Otherwise, normal routing
                 return self._db_menu_route_ooc_input(raw_string, session=session)
         
-        # We have puppets, use normal command processing
+        # We have puppets (possibly on another session), use normal command processing
         return super().execute_cmd(raw_string, session=session, **kwargs)
 
 

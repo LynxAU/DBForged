@@ -42,13 +42,14 @@ def compute_current_pl(character):
     form_factor = 1.0
     form_speed_bias = 1.0
     if form_key:
-        from world.forms import FORMS
+        from world.forms import FORMS, get_form_modifiers
 
         form = FORMS.get(form_key, {})
         form_mastery = (character.db.form_mastery or {}).get(form_key, 0)
         mastery_bonus = min(0.30, form_mastery * 0.005)
-        form_factor = (form.get("pl_multiplier", 1.0) + mastery_bonus)
-        form_speed_bias = form.get("speed_bias", 1.0)
+        form_mods = get_form_modifiers(character, form_key)
+        form_factor = (form_mods.get("pl_factor", form.get("pl_multiplier", 1.0)) + mastery_bonus)
+        form_speed_bias = form_mods.get("speed_bias", form.get("speed_bias", 1.0))
 
     suppression_factor = character.db.suppression_factor if character.db.suppressed else 1.0
     combat_readiness = 0.94 if character.db.suppressed else 1.0
@@ -70,6 +71,7 @@ def compute_current_pl(character):
         "ki_factor": round(ki_factor, 3),
         "charge_factor": round(charge_factor, 3),
         "form_factor": round(form_factor * form_speed_bias, 3),
+        "active_form": form_key or "base",
         "combat_readiness": combat_readiness,
         "control_efficiency": round(control_efficiency, 3),
         "bruised_factor": bruised_factor,

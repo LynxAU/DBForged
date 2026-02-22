@@ -1,0 +1,274 @@
+{% extends "website/base.html" %}
+
+{% block content %}
+<style>
+  :root {
+    --db-bg: #0e121a;
+    --db-panel: #171f2d;
+    --db-panel-2: #121926;
+    --db-line: #2f405d;
+    --db-text: #e6edf7;
+    --db-muted: #9cb0cb;
+    --db-accent: #ff9d2f;
+    --db-accent-2: #30d1ff;
+    --db-good: #73ff9e;
+  }
+  .db-tech-ui {
+    background:
+      radial-gradient(circle at 10% 15%, rgba(255,157,47,0.18), transparent 35%),
+      radial-gradient(circle at 90% 10%, rgba(48,209,255,0.18), transparent 35%),
+      linear-gradient(180deg, #0c1018, #0a0e15);
+    color: var(--db-text);
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    font-family: Consolas, "Courier New", monospace;
+  }
+  .db-tech-header {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1.4fr 1fr;
+    margin-bottom: 16px;
+  }
+  .db-card {
+    background: linear-gradient(180deg, rgba(23,31,45,0.95), rgba(18,25,38,0.95));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .db-title { font-size: 20px; color: #fff3db; margin: 0 0 8px; letter-spacing: .03em; }
+  .db-sub { color: var(--db-muted); font-size: 12px; }
+  .db-controls { display: grid; gap: 8px; }
+  .db-controls input, .db-controls select {
+    width: 100%;
+    background: #0d1420;
+    color: var(--db-text);
+    border: 1px solid var(--db-line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font: inherit;
+  }
+  .db-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 14px;
+  }
+  .db-list {
+    display: grid;
+    gap: 10px;
+    max-height: 70vh;
+    overflow: auto;
+    padding-right: 4px;
+  }
+  .db-item {
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    background: rgba(10,14,22,0.72);
+    padding: 10px;
+  }
+  .db-item-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .db-item-name { color: #fff3dd; font-weight: 700; }
+  .db-item-meta { color: var(--db-muted); font-size: 12px; }
+  .db-pill-row { display:flex; flex-wrap:wrap; gap:6px; margin: 8px 0; }
+  .db-pill {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03);
+    color: #cfe1fb;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+  .db-pill.kind-technique { border-color: rgba(48,209,255,0.35); }
+  .db-pill.kind-racial { border-color: rgba(115,255,158,0.35); }
+  .db-pill.kind-transformation { border-color: rgba(255,157,47,0.35); }
+  .db-loadout-slot {
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .db-counts { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin-top:8px; }
+  .db-counts div { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px; text-align:center; border: 1px solid rgba(255,255,255,0.05); }
+  .db-empty { color: var(--db-muted); padding: 18px; text-align: center; }
+  @media (max-width: 980px) {
+    .db-tech-header, .db-layout { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="db-tech-ui">
+  <div class="db-tech-header">
+    <div class="db-card">
+      <h1 class="db-title">DBForged Technique Interface</h1>
+      <div class="db-sub">Abilities, racial traits, and transformations in one searchable Dragon Ball-themed catalog.</div>
+      <div class="db-counts" id="db-counts"></div>
+    </div>
+    <div class="db-card db-controls">
+      <input id="db-search" type="search" placeholder="Search by name, tag, summary..." />
+      <select id="db-kind">
+        <option value="all">All types</option>
+        <option value="technique">Techniques</option>
+        <option value="transformation">Transformations</option>
+        <option value="racial">Passives / Racials</option>
+      </select>
+      <select id="db-category">
+        <option value="all">All categories</option>
+        <option value="melee">Melee</option>
+        <option value="ki">Ki</option>
+        <option value="beam">Beam</option>
+        <option value="control">Utility / Control</option>
+        <option value="transformation">Transformation</option>
+        <option value="passive/racial">Passive / Racial</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="db-layout">
+    <div class="db-card">
+      <div class="db-sub" id="db-results-meta">Loading catalog...</div>
+      <div class="db-list" id="db-results"></div>
+    </div>
+    <div class="db-card">
+      <div class="db-title" style="font-size:16px;">Equipped 4-Tech Loadout</div>
+      <div class="db-sub" style="margin-bottom:8px;">Read-only view for now. Loadout enforcement remains command-side.</div>
+      <div id="db-loadout"></div>
+      <div class="db-sub" style="margin-top:8px;">Tip: Use in-game `equiptech` to adjust current loadout.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const payload = JSON.parse({{ catalog_json|safe }});
+  const allItems = []
+    .concat(payload.techniques || [])
+    .concat(payload.transformations || [])
+    .concat(payload.racials || []);
+
+  const els = {
+    search: document.getElementById("db-search"),
+    kind: document.getElementById("db-kind"),
+    category: document.getElementById("db-category"),
+    results: document.getElementById("db-results"),
+    meta: document.getElementById("db-results-meta"),
+    loadout: document.getElementById("db-loadout"),
+    counts: document.getElementById("db-counts")
+  };
+
+  function normalizeText(item) {
+    return [
+      item.name, item.id, item.category, item.summary, item.description,
+      (item.tags || []).join(" "), item.unlock_source || ""
+    ].join(" ").toLowerCase();
+  }
+
+  function mapCategory(item) {
+    if (item.kind === "racial") return "passive/racial";
+    if (item.kind === "transformation") return "transformation";
+    if (item.category === "utility" || item.category === "control" || item.category === "defense" || item.category === "movement") {
+      return "control";
+    }
+    return item.category || "misc";
+  }
+
+  function formatNumber(n) {
+    if (n == null) return "--";
+    const num = Number(n);
+    return Number.isFinite(num) ? String(num) : "--";
+  }
+
+  function renderCounts() {
+    const c = payload.counts || {};
+    els.counts.innerHTML = [
+      `<div><div class="db-sub">Techniques</div><div>${c.techniques ?? 0}</div></div>`,
+      `<div><div class="db-sub">Transformations</div><div>${c.transformations ?? 0}</div></div>`,
+      `<div><div class="db-sub">Racials</div><div>${c.racials ?? 0}</div></div>`
+    ].join("");
+  }
+
+  function renderLoadout() {
+    const loadout = payload.loadout || [];
+    if (!loadout.length) {
+      els.loadout.innerHTML = [
+        1,2,3,4
+      ].map(i => `<div class="db-loadout-slot"><div class="db-sub">Slot ${i}</div><div>Empty</div></div>`).join("");
+      return;
+    }
+    els.loadout.innerHTML = [0,1,2,3].map(function (idx) {
+      const item = loadout[idx];
+      if (!item) {
+        return `<div class="db-loadout-slot"><div class="db-sub">Slot ${idx+1}</div><div>Empty</div></div>`;
+      }
+      return [
+        `<div class="db-loadout-slot">`,
+        `<div class="db-sub">Slot ${idx+1}</div>`,
+        `<div style="color:#fff3dd;font-weight:700;">${escapeHtml(item.name)}</div>`,
+        `<div class="db-sub">Ki ${formatNumber(item.cost)} | CD ${formatNumber(item.cooldown)}s</div>`,
+        `<div class="db-sub">${escapeHtml(item.summary || "")}</div>`,
+        `</div>`
+      ].join("");
+    }).join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function renderResults() {
+    const q = (els.search.value || "").trim().toLowerCase();
+    const kind = els.kind.value;
+    const cat = els.category.value;
+
+    const filtered = allItems.filter(function (item) {
+      if (kind !== "all" && item.kind !== kind) return false;
+      if (cat !== "all" && mapCategory(item) !== cat) return false;
+      if (!q) return true;
+      return normalizeText(item).includes(q);
+    });
+
+    els.meta.textContent = `Showing ${filtered.length} of ${allItems.length} entries`;
+    if (!filtered.length) {
+      els.results.innerHTML = `<div class="db-empty">No techniques matched the current filters.</div>`;
+      return;
+    }
+
+    els.results.innerHTML = filtered.map(function (item) {
+      const costLabel = item.kind === "transformation" ? `Drain ${formatNumber(item.cost)}/tick` : `Ki ${formatNumber(item.cost)}`;
+      const cdLabel = item.kind === "transformation" ? "Activation" : `CD ${formatNumber(item.cooldown)}s`;
+      const pills = []
+        .concat([`<span class="db-pill kind-${item.kind}">${escapeHtml(item.kind)}</span>`])
+        .concat((item.tags || []).slice(0, 6).map(t => `<span class="db-pill">${escapeHtml(t)}</span>`))
+        .join("");
+
+      return [
+        `<div class="db-item">`,
+        `  <div class="db-item-top">`,
+        `    <div>`,
+        `      <div class="db-item-name">${escapeHtml(item.name)}</div>`,
+        `      <div class="db-item-meta">${escapeHtml(item.id)} | ${escapeHtml(item.category || "")}</div>`,
+        `    </div>`,
+        `    <div class="db-item-meta">${escapeHtml(costLabel)} | ${escapeHtml(cdLabel)}</div>`,
+        `  </div>`,
+        `  <div class="db-pill-row">${pills}</div>`,
+        `  <div>${escapeHtml(item.summary || "")}</div>`,
+        `  <div class="db-sub" style="margin-top:6px;">${escapeHtml(item.description || "")}</div>`,
+        `  <div class="db-sub" style="margin-top:8px;color:#bfe4ff;">Unlock: ${escapeHtml(item.unlock_source || "Unknown")}</div>`,
+        `</div>`
+      ].join("");
+    }).join("");
+  }
+
+  [els.search, els.kind, els.category].forEach(el => el.addEventListener("input", renderResults));
+  renderCounts();
+  renderLoadout();
+  renderResults();
+})();
+</script>
+{% endblock %}

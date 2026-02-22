@@ -7,16 +7,36 @@ from __future__ import annotations
 import random
 import time
 
+from django.urls import reverse
 from evennia.objects.models import ObjectDB
 from evennia.utils import evtable
+from evennia.utils.create import create_object
 
 from commands.command import Command
 from world.combat import engage, disengage, register_beam, start_charging, stop_charging
 from world.color_utils import aura_phrase, colorize
+from world.content_unlocks import get_trainer_reward_map, get_unlock_label
 from world.events import emit_combat_event, emit_entity_delta, emit_vfx
-from world.forms import get_form
+from world.forms import FORMS, activate_form, deactivate_form, get_form, list_forms_for_race
+from world.lssj import escalate_lssj, get_lssj_ui_state, train_lssj_control
+from world.npc_content import NPC_DEFINITIONS, get_npc_definition
 from world.power import pl_gap_effect
-from world.techniques import TECHNIQUES, get_technique, is_beam
+from world.quests import (
+    accept_quest,
+    get_quest_definition,
+    get_quest_status,
+    get_quests_for_npc,
+    mark_quest_turn_in_ready,
+    turn_in_quest,
+)
+from world.racials import (
+    RACIALS,
+    get_character_racials,
+    get_racial,
+    get_racial_hook_value,
+    use_racial,
+)
+from world.techniques import TECHNIQUES, execute_technique_stub, get_technique, is_beam
 
 
 def _search_target(caller, text):
@@ -220,13 +240,11 @@ class CmdTransform(Command):
         caller = self.caller
         raw = self.cmdstring.lower() if self.cmdstring else ""
         if raw == "revert" or self.args.strip().lower() == "revert":
-            if caller.db.active_form:
-                caller.db.active_form = None
-                caller.msg(f"|yYou revert to base form.|n Your {aura_phrase(caller.db.aura_color)} settles.")
+            ok, msg, _stub = deactivate_form(caller, reason="manual")
+            caller.msg(f"|y{msg}|n" if ok else msg)
+            if ok:
                 emit_vfx(caller.location, "vfx_revert", source=caller)
                 emit_entity_delta(caller)
-            else:
-                caller.msg("You are already in base form.")
             return
         if not self.args:
             caller.msg("Usage: transform <form> or revert")
@@ -235,23 +253,14 @@ class CmdTransform(Command):
         if not form:
             caller.msg("Unknown form.")
             return
-        if form.get("stub"):
-            caller.msg(f"{form['name']} is not implemented in this slice.")
-            return
-        if form.get("race") != (caller.db.race or "").lower():
-            caller.msg(f"Only {form.get('race')} can use {form['name']}.")
-            return
-        if caller.db.active_form == form_key:
-            caller.msg("You are already in that form.")
-            return
-        if caller.db.ki_current < 20:
+        if caller.db.ki_current < 20 and form.get("resource_drain", {}).get("ki_per_tick", 0) > 0:
             caller.msg("You need at least 20 ki to transform.")
             return
-        caller.db.active_form = form_key
-        mastery = dict(caller.db.form_mastery or {})
-        mastery[form_key] = mastery.get(form_key, 0) + 1
-        caller.db.form_mastery = mastery
-        caller.msg(f"|yYou transform into {form['name']}!|n Your {aura_phrase(caller.db.aura_color)} flares.")
+        ok, msg, _stub = activate_form(caller, form_key, context={"command": "transform"})
+        if not ok:
+            caller.msg(msg)
+            return
+        caller.msg(f"|y{msg}|n Your {aura_phrase(caller.db.aura_color)} flares.")
         emit_vfx(caller.location, form.get("vfx_id", "vfx_transform"), source=caller)
         emit_entity_delta(caller)
 
@@ -281,16 +290,23 @@ class CmdTech(Command):
         if cd > 0:
             caller.msg(f"Technique on cooldown: {cd:.1f}s")
             return
-        if not caller.spend_ki(tech["ki_cost"]):
+        ki_cost = int(tech.get("ki_cost", 0) or 0)
+        cost_reduction = float(get_racial_hook_value(caller, "ki_cost_reduction", 0.0) or 0.0)
+        if tech.get("category") in {"utility", "control"}:
+            cost_reduction += float(get_racial_hook_value(caller, "utility_ki_cost_reduction", 0.0) or 0.0)
+        ki_cost = max(0, int(round(ki_cost * (1.0 - min(0.65, cost_reduction)))))
+        if not caller.spend_ki(ki_cost):
             caller.msg("Not enough ki.")
             return
 
+        target_mode = (tech.get("target_rules") or {}).get("target")
+        is_self_target = "self" in tech.get("tags", []) or target_mode == "self"
         target = caller
-        if "self" not in tech.get("tags", []) and len(parts) > 1:
+        if not is_self_target and len(parts) > 1:
             target = _search_target(caller, " ".join(parts[1:]))
             if not target:
                 return
-        elif "self" not in tech.get("tags", []):
+        elif not is_self_target:
             target = ObjectDB.objects.filter(id=caller.db.combat_target).first() if caller.db.combat_target else None
             if target and target.location != caller.location:
                 target = None
@@ -308,8 +324,6 @@ class CmdTech(Command):
         _set_cooldown(caller, tech_key, cooldown)
 
         if caller.db.active_form:
-            from world.forms import FORMS
-
             form = FORMS.get(caller.db.active_form, {})
             form_mastery = (caller.db.form_mastery or {}).get(caller.db.active_form, 0)
             reduction = min(0.7, form_mastery * form.get("mastery_drain_reduction", 0.0))
@@ -318,6 +332,18 @@ class CmdTech(Command):
                 caller.spend_ki(tech_drain)
 
         subtype = "technique"
+        effect_type = (tech.get("effect") or {}).get("type")
+        if effect_type == "transform":
+            form_key = tech["effect"].get("form_key")
+            ok, msg, _stub = activate_form(caller, form_key, context={"via_technique": tech_key})
+            caller.msg(f"|y{msg}|n" if ok else msg)
+            if ok:
+                emit_vfx(caller.location, tech.get("vfx_id", "vfx_transform"), source=caller)
+                subtype = "transform"
+            _gain_tech_mastery(caller, tech_key, amount=1)
+            emit_combat_event(caller.location, caller, None, {"subtype": subtype, "technique": tech_key})
+            emit_entity_delta(caller)
+            return
         if tech_key == "solar_flare":
             target.add_status("stunned", tech["effect"]["duration"])
             _interrupt_target(target, caller)
@@ -334,7 +360,7 @@ class CmdTech(Command):
             caller.msg("You burst into afterimages and become hard to track.")
             emit_vfx(caller.location, tech["vfx_id"], source=caller)
             subtype = "movement"
-        else:
+        elif tech.get("scaling"):
             scaling = tech["scaling"]
             pl, _ = caller.get_current_pl()
             gap = pl_gap_effect(pl, target.get_current_pl()[0])
@@ -362,6 +388,15 @@ class CmdTech(Command):
                 emit_entity_delta(target)
                 subtype = "damage"
             emit_vfx(caller.location, tech["vfx_id"], source=caller, target=target)
+        else:
+            # Integration-ready stub path for utility/control techniques not hardcoded yet.
+            execute_technique_stub(caller, tech_key, target=target, context={"cmd": "tech"})
+            caller.msg(
+                f"|c{caller.key}|n uses {tech['name']} on {target.key if target else 'self'} "
+                f"({tech.get('ui_summary', 'stub effect')})."
+            )
+            emit_vfx(caller.location, tech.get("vfx_id", "vfx_technique"), source=caller, target=target if target != caller else None)
+            subtype = "technique_stub"
 
         _gain_tech_mastery(caller, tech_key, amount=1)
         emit_combat_event(
@@ -413,16 +448,32 @@ class CmdListTech(Command):
 
     def func(self):
         caller = self.caller
+        query = (self.args or "").strip().lower()
         known = caller.db.known_techniques or []
         equipped = set(caller.db.equipped_techniques or [])
-        rows = []
+        categories = {}
         for key in known:
             data = TECHNIQUES.get(key, {"name": key})
+            if query and query not in data["name"].lower() and query not in key:
+                continue
             marker = "*" if key in equipped else " "
             lvl = _tech_mastery_level(caller, key)
-            rows.append(f"[{marker}] {data['name']} (ki {data.get('ki_cost', '-')}, cd {data.get('cooldown', '-')}, m{lvl})")
-        caller.msg("Known techniques:\n" + "\n".join(rows))
-        caller.msg("`*` = equipped (max 4).")
+            cat = data.get("category", "misc")
+            line = (
+                f"[{marker}] {data['name']} (ki {data.get('ki_cost', '-')}, cd {data.get('cooldown', '-')}, m{lvl}) "
+                f"- {data.get('ui_summary', '')} | {get_unlock_label('technique', key)}"
+            )
+            categories.setdefault(cat, []).append(line)
+        if not categories:
+            caller.msg("No known techniques match that filter.")
+            return
+        lines = []
+        for cat in sorted(categories.keys()):
+            lines.append(f"|w[{cat.upper()}]|n")
+            lines.extend(categories[cat])
+            lines.append("")
+        caller.msg("Known techniques:\n" + "\n".join(lines).rstrip())
+        caller.msg("`*` = equipped (max 4). Use `techui` for web list/filter/loadout view.")
 
 
 class CmdScan(Command):
@@ -445,8 +496,10 @@ class CmdScan(Command):
         displayed = breakdown["displayed_pl"]
         scanner_skill = (caller.db.ki_control or 0) + (caller.db.mastery or 0) * 0.35
         error = max(0.04, 0.30 - scanner_skill * 0.0045)
+        error -= float(get_racial_hook_value(caller, "scan_error_reduction", 0.0) or 0.0)
         if target.db.suppressed:
             error += max(0.02, 0.22 - scanner_skill * 0.002)
+        error = max(0.02, error)
         estimate = int(max(1, displayed * random.uniform(1.0 - error, 1.0 + error)))
         caller.msg(f"Scouter readout on {target.key}: ~{estimate} PL (error margin ~{int(error*100)}%).")
 
@@ -481,7 +534,12 @@ class CmdSense(Command):
             caller.msg("You cannot sense that target.")
             return
         _, breakdown = target.get_current_pl()
-        caller.msg(f"You sense {target.key}'s {aura_phrase(target.db.aura_color)} around {breakdown['displayed_pl']} PL.")
+        sense_bonus = float(get_racial_hook_value(caller, "sense_precision_bonus", 0.0) or 0.0)
+        precision_note = f" (enhanced clarity +{int(sense_bonus * 100)}%)" if sense_bonus > 0 else ""
+        caller.msg(
+            f"You sense {target.key}'s {aura_phrase(target.db.aura_color)} around {breakdown['displayed_pl']} PL."
+            f"{precision_note}"
+        )
 
 
 class CmdSuppress(Command):
@@ -529,6 +587,405 @@ class CmdTrain(Command):
         emit_entity_delta(caller)
 
 
+class CmdTechniqueUI(Command):
+    key = "techui"
+    aliases = ["spellui", "techniques"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        try:
+            path = reverse("db_technique_ui")
+        except Exception:
+            path = "/db/techniques/"
+        equipped = ", ".join(
+            TECHNIQUES[k]["name"] for k in (caller.db.equipped_techniques or []) if k in TECHNIQUES
+        ) or "None"
+        caller.msg(
+            "Technique UI (web): "
+            f"|w{path}|n\n"
+            "Open this in the Evennia web client browser tab to view search/filter categories and your 4-tech loadout.\n"
+            f"Current loadout: {equipped}"
+        )
+
+
+class CmdForms(Command):
+    key = "forms"
+    aliases = ["listforms"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        race = caller.db.race or "unknown"
+        rows = []
+        for key, form in list_forms_for_race(race):
+            unlocked = key in set(caller.db.unlocked_forms or [])
+            active = caller.db.active_form == key
+            src = get_unlock_label("transformation", key)
+            marker = "@" if active else ("+" if unlocked else "-")
+            rows.append(f"[{marker}] {form['name']} (t{form.get('tier','?')}) - {src}")
+        caller.msg("Forms:\n" + ("\n".join(rows) if rows else "No forms available for your race."))
+        if caller.db.active_form == "legendary_super_saiyan":
+            lssj = get_lssj_ui_state(caller)["modifiers"]
+            caller.msg(
+                f"LSSJ: stage={lssj.get('stage')} rage={lssj.get('rage')} control={lssj.get('control')} "
+                f"PLx={lssj.get('pl_factor',1.0):.2f}"
+            )
+
+
+class CmdLSSJ(Command):
+    key = "lssj"
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        arg = (self.args or "").strip().lower()
+        if not arg or arg == "status":
+            ui = get_lssj_ui_state(caller)
+            state = ui["state"]
+            mods = ui["modifiers"]
+            caller.msg(
+                "LSSJ Status: "
+                f"unlocked={state.get('unlocked')} active={state.get('active')} stage={state.get('stage')} "
+                f"rage={state.get('rage')} control={state.get('control')} mastery={state.get('mastery_rank')} "
+                f"PLx={mods.get('pl_factor',1.0):.2f}"
+            )
+            return
+        if arg == "escalate":
+            ok, msg = escalate_lssj(caller)
+            caller.msg(msg)
+            return
+        if arg == "train":
+            state = train_lssj_control(caller, amount=1)
+            caller.msg(
+                f"LSSJ training stub: mastery={state.get('mastery_rank')} control={state.get('control')}."
+            )
+            return
+        caller.msg("Usage: lssj [status|escalate|train]")
+
+
+class CmdRacials(Command):
+    key = "racials"
+    aliases = ["racialslist", "traits"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        racials = get_character_racials(caller)
+        if not racials:
+            caller.msg("No racials found for your character.")
+            return
+        cds = caller.db.racial_cooldowns or {}
+        now = time.time()
+        lines = []
+        for key, data in racials:
+            marker = "A" if data.get("kind") == "active" else "P"
+            cd_left = max(0.0, float(cds.get(key, 0) or 0) - now)
+            cost = int(data.get("ki_cost", 0) or 0)
+            extra = []
+            if cost:
+                extra.append(f"ki {cost}")
+            if data.get("cooldown"):
+                extra.append(f"cd {data.get('cooldown', 0):.0f}s")
+            if cd_left > 0:
+                extra.append(f"ready {cd_left:.1f}s")
+            extra_txt = f" [{', '.join(extra)}]" if extra else ""
+            lines.append(f"[{marker}] {data['name']} - {data.get('ui_summary', data.get('description', ''))}{extra_txt}")
+        caller.msg("Racial traits:\n" + "\n".join(lines))
+        caller.msg("Use `racial <name> [target]` for active racials.")
+
+
+class CmdRacial(Command):
+    key = "racial"
+    aliases = ["traituse"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        if not self.args:
+            caller.msg("Usage: racial <racial_name> [target]")
+            return
+        parts = self.args.split()
+        racial_key = racial = None
+        target_start = len(parts)
+        # Support multi-word racial names by matching the longest prefix.
+        for i in range(len(parts), 0, -1):
+            key, data = get_racial(" ".join(parts[:i]))
+            if data:
+                racial_key, racial = key, data
+                target_start = i
+                break
+        if not racial:
+            caller.msg("Unknown racial.")
+            return
+        target = None
+        target_mode = ((racial.get("target_rules") or {}).get("target")) or "self"
+        if target_mode not in {"self"} and len(parts) > target_start:
+            target = _search_target(caller, " ".join(parts[target_start:]))
+            if not target:
+                return
+        elif target_mode not in {"self"} and getattr(caller.db, "combat_target", None):
+            target = ObjectDB.objects.filter(id=caller.db.combat_target).first()
+        ok, msg, _stub = use_racial(caller, racial_key, target=target, context={"cmd": "racial"})
+        caller.msg(f"|y{msg}|n" if ok else msg)
+        if not ok:
+            return
+        subtype = f"racial_{(racial.get('effect') or {}).get('type', 'use')}"
+        emit_vfx(caller.location, racial.get("vfx_id", "vfx_technique"), source=caller, target=target)
+        emit_combat_event(caller.location, caller, target, {"subtype": subtype, "racial": racial_key})
+        emit_entity_delta(caller)
+        if target and target != caller and hasattr(target, "db"):
+            emit_entity_delta(target)
+
+
+class CmdQuests(Command):
+    key = "quests"
+    aliases = ["questlog"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        arg = (self.args or "").strip()
+        if not arg:
+            nearby = []
+            for obj in caller.location.contents if caller.location else []:
+                if _is_npc(obj) and (obj.db.npc_role == "trainer"):
+                    nearby.append(obj)
+            if nearby:
+                lines = ["Nearby trainer quest boards:"]
+                for npc in nearby:
+                    npc_key = npc.db.trainer_key or npc.db.npc_content_key
+                    qlist = get_quests_for_npc(npc_key)
+                    lines.append(f"- {npc.key}: {len(qlist)} quest(s)")
+                    for quest in qlist[:5]:
+                        status = get_quest_status(caller, quest["id"])
+                        if status.get("completed"):
+                            state = "completed"
+                        elif status.get("turn_in_ready"):
+                            state = "turn-in ready"
+                        elif status.get("accepted"):
+                            state = "accepted"
+                        else:
+                            state = "available"
+                        lines.append(f"  {quest['id']} [{state}]")
+                caller.msg("\n".join(lines))
+                caller.msg("Use `quest <accept|done|turnin|show> <quest_id>`.")
+                return
+            state = caller.db.quest_state or {}
+            if not state:
+                caller.msg("No quest progress yet. Talk to a trainer.")
+                return
+            lines = ["Quest progress:"]
+            for quest_id in sorted(state.keys()):
+                quest = get_quest_definition(quest_id) or {"title": quest_id}
+                status = get_quest_status(caller, quest_id)
+                flags = []
+                if status.get("accepted"):
+                    flags.append("accepted")
+                if status.get("turn_in_ready"):
+                    flags.append("turn-in")
+                if status.get("completed"):
+                    flags.append("completed")
+                lines.append(f"- {quest['title']} ({quest_id}) [{' / '.join(flags) or 'unknown'}]")
+            caller.msg("\n".join(lines))
+            return
+
+        quest = get_quest_definition(arg)
+        if not quest:
+            caller.msg("Unknown quest id.")
+            return
+        status = get_quest_status(caller, arg)
+        caller.msg(
+            f"{quest['title']} ({quest['id']})\n"
+            f"Giver: {NPC_DEFINITIONS.get(quest['giver'], {}).get('name', quest['giver'])}\n"
+            f"{quest.get('summary','')}\n"
+            f"State: accepted={status.get('accepted')} ready={status.get('turn_in_ready')} completed={status.get('completed')}"
+        )
+
+
+class CmdQuest(Command):
+    key = "quest"
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def _nearby_trainer_key(self, caller, quest_id):
+        quest = get_quest_definition(quest_id)
+        if not quest or not caller.location:
+            return None
+        giver = quest.get("giver")
+        for obj in caller.location.contents:
+            if not _is_npc(obj):
+                continue
+            npc_key = obj.db.trainer_key or obj.db.npc_content_key
+            if npc_key == giver:
+                return npc_key
+        return None
+
+    def func(self):
+        caller = self.caller
+        parts = (self.args or "").split()
+        if len(parts) < 2:
+            caller.msg("Usage: quest <accept|done|turnin|show> <quest_id>")
+            return
+        action = parts[0].lower()
+        quest_id = parts[1]
+        quest = get_quest_definition(quest_id)
+        if not quest:
+            caller.msg("Unknown quest id.")
+            return
+        if action == "show":
+            status = get_quest_status(caller, quest_id)
+            caller.msg(
+                f"{quest['title']} ({quest_id})\n{quest.get('summary','')}\n"
+                f"accepted={status.get('accepted')} ready={status.get('turn_in_ready')} completed={status.get('completed')}"
+            )
+            return
+        nearby_giver = self._nearby_trainer_key(caller, quest_id)
+        if not nearby_giver:
+            caller.msg("You must be near that trainer to manage this quest.")
+            return
+        if action == "accept":
+            ok, msg, _state = accept_quest(caller, quest_id)
+            caller.msg(msg)
+            return
+        if action in {"done", "complete"}:
+            ok, msg, _state = mark_quest_turn_in_ready(caller, quest_id)
+            caller.msg(msg)
+            return
+        if action in {"turnin", "claim"}:
+            ok, msg, payload = turn_in_quest(caller, quest_id, npc_key=nearby_giver)
+            caller.msg(msg)
+            if ok and payload:
+                granted = payload.get("granted", {})
+                techs = [TECHNIQUES[k]["name"] for k in granted.get("techniques", []) if k in TECHNIQUES]
+                forms = [FORMS[k]["name"] for k in granted.get("forms", []) if k in FORMS]
+                if techs:
+                    caller.msg("Learned techniques: " + ", ".join(techs))
+                if forms:
+                    caller.msg("Unlocked forms: " + ", ".join(forms))
+                if granted.get("lssj_changed"):
+                    caller.msg("LSSJ progression updated.")
+                emit_entity_delta(caller)
+            return
+        caller.msg("Usage: quest <accept|done|turnin|show> <quest_id>")
+
+
+class CmdTalk(Command):
+    key = "talk"
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        if not self.args:
+            caller.msg("Usage: talk <npc>")
+            return
+        target = _search_target(caller, self.args.strip())
+        if not target:
+            return
+        if not _is_npc(target):
+            caller.msg("That target has nothing useful to say.")
+            return
+        content_key = target.db.trainer_key or target.db.npc_content_key
+        data = get_npc_definition(content_key)
+        if not data:
+            caller.msg(f"{target.key} has no trainer dialogue scaffold attached yet.")
+            return
+        quests = get_quests_for_npc(content_key)
+        reward_map = get_trainer_reward_map().get(content_key, {})
+        lines = [
+            f"|w{data['name']}|n - {data.get('bio','')}",
+            f"Role: {data.get('role','npc')} | Location hint: {data.get('location_hint','Unknown')}",
+            f"Signature moves: {', '.join(data.get('signature_moves', [])) or 'None'}",
+            "",
+            "Dialogue:",
+        ]
+        for text in data.get("dialogue", []):
+            lines.append(f'  "{text}"')
+        lines.append("")
+        lines.append("Questlines:")
+        for quest in quests:
+            lines.append(f"  - {quest['title']} ({quest['id']})")
+        lines.append("")
+        lines.append(
+            "Teaches: "
+            + ", ".join(TECHNIQUES[k]["name"] for k in reward_map.get("techniques", []) if k in TECHNIQUES)
+            if reward_map.get("techniques")
+            else "Teaches: (content mapped, no direct technique rewards listed)"
+        )
+        if reward_map.get("transformations"):
+            lines.append(
+                "Forms: "
+                + ", ".join(FORMS[k]["name"] for k in reward_map["transformations"] if k in FORMS)
+            )
+        caller.msg("\n".join(lines))
+
+
+class CmdSpawnTrainer(Command):
+    key = "spawntrainer"
+    aliases = ["spawnnpc"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        if not self.args:
+            caller.msg("Usage: spawntrainer <npc_key>")
+            caller.msg("Available: " + ", ".join(sorted(NPC_DEFINITIONS.keys())))
+            return
+        if not caller.location:
+            caller.msg("You are nowhere.")
+            return
+        raw = self.args.strip().lower().replace(" ", "_")
+        if raw == "all":
+            spawned = []
+            for npc_key in sorted(NPC_DEFINITIONS.keys()):
+                data = get_npc_definition(npc_key)
+                if not data:
+                    continue
+                if any(getattr(obj.db, "trainer_key", None) == npc_key for obj in caller.location.contents):
+                    continue
+                from typeclasses.npcs import TrainingNPC
+
+                npc = create_object(TrainingNPC, key=data["name"], location=caller.location)
+                npc.db.trainer_key = npc_key
+                npc.db.npc_content_key = npc_key
+                npc.db.npc_role = data.get("role", "trainer")
+                npc.db.bio = data.get("bio")
+                npc.db.dialogue_lines = data.get("dialogue", [])
+                npc.db.questline_keys = data.get("questlines", [])
+                rewards = get_trainer_reward_map().get(npc_key, {})
+                npc.db.teaches_techniques = rewards.get("techniques", [])
+                npc.db.teaches_forms = rewards.get("transformations", [])
+                spawned.append(npc.key)
+            caller.msg(f"Spawned {len(spawned)} trainers: {', '.join(spawned)}")
+            return
+        npc_key = raw
+        data = get_npc_definition(npc_key)
+        if not data:
+            caller.msg("Unknown NPC key.")
+            return
+        from typeclasses.npcs import TrainingNPC
+
+        npc = create_object(TrainingNPC, key=data["name"], location=caller.location)
+        npc.db.trainer_key = npc_key
+        npc.db.npc_content_key = npc_key
+        npc.db.npc_role = data.get("role", "trainer")
+        npc.db.bio = data.get("bio")
+        npc.db.dialogue_lines = data.get("dialogue", [])
+        npc.db.questline_keys = data.get("questlines", [])
+        rewards = get_trainer_reward_map().get(npc_key, {})
+        npc.db.teaches_techniques = rewards.get("techniques", [])
+        npc.db.teaches_forms = rewards.get("transformations", [])
+        caller.msg(f"Spawned trainer NPC: {npc.key} ({npc_key}). Use `talk {npc.key}`.")
+
+
 class CmdHelpDB(Command):
     key = "helpdb"
     locks = "cmd:all()"
@@ -545,10 +1002,19 @@ class CmdHelpDB(Command):
             "tech <techname> <target?>\n"
             "equiptech <techname>\n"
             "listtech\n"
+            "techui\n"
+            "forms\n"
+            "racials\n"
+            "racial <trait> [target]\n"
+            "quests [quest_id]\n"
+            "quest <accept|done|turnin|show> <quest_id>\n"
+            "lssj [status|escalate|train]\n"
             "scan <target>\n"
             "sense <target|room>\n"
             "suppress on|off\n"
             "train\n"
+            "talk <npc>\n"
+            "spawntrainer <npc_key>\n"
             "map\n"
             "logo_test\n"
             "helpdb\n"
