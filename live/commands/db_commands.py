@@ -1387,7 +1387,7 @@ class CmdTeleport(Command):
 
 class CmdNPCStress(Command):
     key = "+npcstress"
-    locks = "cmd:id(1) or perm(Admin)"
+    locks = "cmd:all()"
     help_category = "DB"
 
     def func(self):
