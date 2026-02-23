@@ -89,13 +89,9 @@ docs/build
 # All other docs content is local
 /docs/DBFORGED*
 /docs/DBZ*
-/docs/LICENSE.txt
-/docs/checkenv.sh
-/docs/dbz-combat-webapp/
-/docs/deploy.py
-/docs/task_reference*
-/docs/pylib/
-/docs/source/
+/docs/README_GRAPHICS.md
+/docs/progress.md
+/docs/scripts/
 /docs/README.md
 /docs/requirements.txt
 /.flake8
