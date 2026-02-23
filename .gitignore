@@ -57,6 +57,7 @@ docs/build
 
 # Visual Studio Code (VS-Code)
 .vscode/
+*.code-workspace
 
 # Obsidian 
 .obsidian/
