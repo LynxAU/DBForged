@@ -68,15 +68,7 @@ GLOBAL_SCRIPTS = {
     }
 }
 
-# Test-instance port overrides (randomized free block for this session)
-TELNET_PORTS = [5143]
-WEBSERVER_PORTS = [(5144, 5148)]  # (proxy, django)
-WEBSOCKET_CLIENT_PORT = 5145
-SSL_PORTS = [5146]
-SSH_PORTS = [5147]
-AMP_PORT = 5149
-
-
+# Removed dynamic port section
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
 ######################################################################
