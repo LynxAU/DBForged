@@ -7,6 +7,7 @@ from evennia.commands.cmdset import CmdSet
 from commands.db_commands import (
     CmdAttack,
     CmdCharge,
+    CmdCreateUltimate,
     CmdDBStats,
     CmdEquipTech,
     CmdEquipUltimate,
@@ -32,6 +33,7 @@ from commands.db_commands import (
     CmdLSSJ,
     CmdTalk,
     CmdSpawnTrainer,
+    CmdUseUltimate,
 )
 
 
@@ -48,6 +50,8 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdTech())
         self.add(CmdEquipTech())
         self.add(CmdEquipUltimate())
+        self.add(CmdCreateUltimate())
+        self.add(CmdUseUltimate())
         self.add(CmdListTech())
         self.add(CmdScan())
         self.add(CmdSense())

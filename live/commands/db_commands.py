@@ -684,6 +684,134 @@ class CmdEquipUltimate(Command):
         caller.db.equipped_ultimate = tech_key
 
 
+class CmdCreateUltimate(Command):
+    """
+    Create a custom ultimate technique
+    
+    Usage: createultimate
+    
+    Opens a wizard to design your own signature ultimate technique
+    with custom name, attack type, color, and flavor text.
+    """
+    key = "createultimate"
+    aliases = ["createult", "makeultimate"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        from commands.ultimate_wizard import start_ultimate_wizard
+        caller = self.caller
+        if not hasattr(caller, 'db'):
+            caller.msg("This command is only available to characters.")
+            return
+        start_ultimate_wizard(caller)
+
+
+class CmdUseUltimate(Command):
+    """
+    Use your equipped ultimate technique
+    
+    Usage: ultimate [target]
+    
+    Unleashes your equipped ultimate technique on a target.
+    If you have a custom ultimate, it uses your custom flavor text.
+    """
+    key = "ultimate"
+    aliases = ["ult"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        
+        # Check for custom ultimate first
+        custom_ult = caller.db.custom_ultimate if hasattr(caller, 'db') else None
+        
+        if custom_ult:
+            # Use custom ultimate
+            self._use_custom_ultimate(caller, custom_ult)
+            return
+        
+        # Fall back to equipped technique ultimate
+        equipped_ult = caller.db.equipped_ultimate if hasattr(caller, 'db') else None
+        
+        if not equipped_ult:
+            caller.msg("You don't have an ultimate equipped.")
+            caller.msg("Use |c/createultimate|n to create a custom ultimate,")
+            caller.msg("or |cequipultimate <name>|n to equip a technique as your ultimate.")
+            return
+        
+        if equipped_ult == "custom":
+            # Custom was cleared or doesn't exist
+            caller.msg("Your custom ultimate seems to be missing. Use |c/createultimate|n to create a new one.")
+            return
+        
+        # Use the equipped technique
+        from commands.db_commands import get_technique
+        tech_key, tech = get_technique(equipped_ult)
+        if not tech:
+            caller.msg("Your equipped ultimate technique is not found.")
+            caller.msg("Use |cequipultimate <name>|n to equip a different ultimate.")
+            return
+        
+        # Execute the technique
+        self.caller.execute_cmd(f"tech {equipped_ult} {self.args}")
+
+    def _use_custom_ultimate(self, caller, custom_ult):
+        """Use a custom ultimate with flavor text"""
+        # Find target
+        target = None
+        if self.args:
+            # Try to find target by name
+            location = caller.location
+            if location:
+                for obj in location.contents:
+                    if obj.key.lower() == self.args.lower() and obj.is_typeclass("typeclasses.characters.Character", exact=False):
+                        target = obj
+                        break
+        
+        if not target:
+            # Check combat target
+            if caller.db.combat_target:
+                from evennia.objects.models import ObjectDB
+                target = ObjectDB.objects.filter(id=caller.db.combat_target).first()
+        
+        target_name = target.key if target else "the air"
+        
+        # Generate flavor text
+        flavor_text = custom_ult.get("flavor_text", "")
+        if flavor_text:
+            final_text = flavor_text.format(target=target_name)
+        else:
+            final_text = f"{caller.key} unleashes {custom_ult['name']}!"
+        
+        # Check ki
+        ki_cost = 50  # Base ki cost for custom ultimate
+        if not caller.spend_ki(ki_cost):
+            caller.msg(f"|rYou need {ki_cost} Ki to use {custom_ult['name']}.|n")
+            return
+        
+        # Deal damage if target
+        damage = 0
+        if target and target.is_typeclass("typeclasses.characters.Character", exact=False):
+            damage = 50 + (caller.db.mastery or 10) * 2
+            dealt = target.apply_damage(damage, source=caller, kind="ultimate")
+            caller.location.msg_contents(f"|m{final_text}|n |r({dealt} damage!)|n")
+            
+            # Emit events
+            from world.events import emit_entity_delta, emit_combat_event
+            emit_entity_delta(target)
+            if caller.location:
+                emit_combat_event(caller.location, caller, target, 
+                    {"subtype": "ultimate", "technique": "custom_ultimate", "damage": dealt})
+        else:
+            caller.location.msg_contents(f"|m{final_text}|n")
+        
+        # Emit entity update
+        from world.events import emit_entity_delta
+        emit_entity_delta(caller)
+
+
 class CmdListTech(Command):
     key = "listtech"
     locks = "cmd:all()"
