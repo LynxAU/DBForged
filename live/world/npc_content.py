@@ -18,7 +18,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["turtle_school_fundamentals", "kami_sealing_trials"],
         "trainer_rewards": {
-            "techniques": ["kame_wave", "super_kamehameha", "evil_containment_wave", "solar_flare", "max_power"],
+            "techniques": ["kame_wave", "super_kamehameha", "evil_containment_wave", "solar_flare"],
             "forms": ["max_power"],
         },
     },

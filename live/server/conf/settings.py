@@ -24,6 +24,8 @@ put secret game- or server-specific settings in secret_settings.py.
 
 """
 
+import os
+
 # Use the defaults from Evennia unless explicitly overridden
 from evennia.settings_default import *
 
@@ -31,10 +33,19 @@ from evennia.settings_default import *
 # Evennia base server config
 ######################################################################
 
-# This is the name of your game. Make it catchy!
-SERVERNAME = "live"
+# This is the name of your game. Keep the repo default live-safe, and let
+# local/dev instances override via env var or secret_settings.py.
+SERVERNAME = os.environ.get("DBFORGED_SERVERNAME", "live")
 DBFORGED_VERSION = "0.1"
 DBFORGED_EMIT_CLIENT_EVENTS = False
+
+# Port configuration - use 5143+ range for testing (different from Codex 5143-5149)
+TELNET_PORTS = [5153]
+WEBSERVER_PORTS = [(5154, 5158)]
+WEBSOCKET_CLIENT_PORT = 5155
+SSL_PORTS = [5156]
+SSH_PORTS = [5157]
+AMP_PORT = 5159
 
 # Use game-local cmdsets so DBForged commands mount correctly.
 CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"

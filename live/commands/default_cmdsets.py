@@ -17,6 +17,7 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 from evennia import default_cmds
 
 from commands.commandset import DBSystemCmdSet
+from commands.combat_test import CombatTestCmdSet
 from commands.ooc_menu import (
     CmdDBMainMenu,
     CmdDBMenuEnterGame,
@@ -46,6 +47,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # any commands you add below will overload the default ones.
         #
         self.add(DBSystemCmdSet())
+        self.add(CombatTestCmdSet())
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):
