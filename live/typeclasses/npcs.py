@@ -145,6 +145,18 @@ class TestCombatNPC(DBNPC):
             return
 
         self.db.last_action_time = now
+
+        ai_mode = self.db.test_ai
+        if ai_mode == "stress_move":
+            if not self.db.coords:
+                self.db.coords = (0, 0, 0)
+            x, y, z = self.db.coords
+            dx, dy = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (-1, -1)])
+            self.db.coords = (x + dx, y + dy, z)
+            from world.events import emit_entity_delta
+            emit_entity_delta(self)
+            return
+
         target_id = self.db.combat_target
         if not target_id:
             return
