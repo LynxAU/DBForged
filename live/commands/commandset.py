@@ -9,6 +9,7 @@ from commands.db_commands import (
     CmdCharge,
     CmdDBStats,
     CmdEquipTech,
+    CmdEquipUltimate,
     CmdFlee,
     CmdHelpDB,
     CmdListTech,
@@ -46,6 +47,7 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdTransform())
         self.add(CmdTech())
         self.add(CmdEquipTech())
+        self.add(CmdEquipUltimate())
         self.add(CmdListTech())
         self.add(CmdScan())
         self.add(CmdSense())

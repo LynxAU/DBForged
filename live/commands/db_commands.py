@@ -635,6 +635,55 @@ class CmdEquipTech(Command):
         caller.msg(f"Equipped {tech['name']}.")
 
 
+class CmdEquipUltimate(Command):
+    """
+    Equip an ultimate technique (1 slot)
+    
+    Usage: equipultimate <techname>
+    
+    Ultimates are high-powered finishers. They require more Ki
+    and have longer cooldowns, but deal massive damage.
+    """
+    key = "equipultimate"
+    aliases = ["equipult"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        if not self.args:
+            caller.msg("Usage: equipultimate <techname>")
+            caller.msg("Use 'listtech' to see your known techniques.")
+            return
+        if caller.is_in_combat():
+            caller.msg("You can only change techniques out of combat.")
+            return
+        tech_key, tech = get_technique(self.args.strip())
+        if not tech:
+            caller.msg("Unknown technique.")
+            return
+        known = list(caller.db.known_techniques or [])
+        if tech_key not in known:
+            caller.msg("You have not learned that technique.")
+            return
+        # Check if technique qualifies as ultimate (high base damage or marked as ultimate)
+        effect = tech.get("effect", {})
+        base_damage = effect.get("base_damage", 0) if effect.get("type") == "damage" else 0
+        if base_damage < 40 and "ultimate" not in tech.get("tags", []):
+            caller.msg(f"{tech['name']} is not an ultimate technique.\n"
+                       f"Ultimates must have base damage of 40+ or be tagged as ultimate.")
+            return
+        current_ultimate = caller.db.equipped_ultimate
+        if current_ultimate == tech_key:
+            caller.msg("Already set as your ultimate.")
+            return
+        if current_ultimate and current_ultimate in TECHNIQUES:
+            caller.msg(f"Replaced {TECHNIQUES[current_ultimate]['name']} with {tech['name']} as your ultimate.")
+        else:
+            caller.msg(f"Set {tech['name']} as your ultimate technique.")
+        caller.db.equipped_ultimate = tech_key
+
+
 class CmdListTech(Command):
     key = "listtech"
     locks = "cmd:all()"

@@ -100,6 +100,7 @@ class Character(ObjectParent, DefaultCharacter):
         self.db.tech_cooldowns = self.db.tech_cooldowns or {}
         self.db.known_techniques = self.db.known_techniques or list(STARTER_TECHNIQUES)
         self.db.equipped_techniques = self.db.equipped_techniques or list(STARTER_TECHNIQUES[:4])
+        self.db.equipped_ultimate = self.db.equipped_ultimate or None
         self.db.racial_traits = self.db.racial_traits or []
         self.db.lssj_state = self.db.lssj_state or {}
         ensure_character_racials(self)

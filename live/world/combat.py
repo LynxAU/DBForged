@@ -144,21 +144,21 @@ class CombatHandler(DefaultScript):
             if obj.has_status("stunned"):
                 stop_charging(obj, interrupted=True)
                 continue
-            obj.db.charge_stacks = min(9, (obj.db.charge_stacks or 0) + 1)
+            obj.db.charge_stacks = min(2, (obj.db.charge_stacks or 0) + 1)
             ki_gain = 3 + int((obj.db.ki_control or 0) * 0.08)
             obj.restore_ki(ki_gain)
             
             # EPIC charging messages based on stack level
             stacks = obj.db.charge_stacks
-            if stacks >= 7:
+            if stacks >= 2:
                 aura_desc = "BLINDING"
-                msg = f"|m>>> CHARGING UP! >>>|n {aura_phrase(obj.db.aura_color).upper()} aura blazes! Ki +{ki_gain}, charge stacks: {stacks}/9"
-            elif stacks >= 4:
+                msg = f"|m>>> CHARGING UP! >>>|n {aura_phrase(obj.db.aura_color).upper()} aura blazes! Ki +{ki_gain}, charge stacks: {stacks}/2"
+            elif stacks >= 1:
                 aura_desc = "INTENSIFYING"
-                msg = f"|mCharging...|n {aura_phrase(obj.db.aura_color).capitalize()} intensifies. Ki +{ki_gain}, charge stacks: {stacks}/9"
+                msg = f"|mCharging...|n {aura_phrase(obj.db.aura_color).capitalize()} intensifies. Ki +{ki_gain}, charge stacks: {stacks}/2"
             else:
                 aura_desc = "growing"
-                msg = f"|cCharging...|n {aura_phrase(obj.db.aura_color)} aura {aura_desc}. Ki +{ki_gain}, charge stacks: {stacks}/9"
+                msg = f"|cCharging...|n {aura_phrase(obj.db.aura_color)} aura {aura_desc}. Ki +{ki_gain}, charge stacks: {stacks}/2"
             
             obj.msg(msg)
             emit_entity_delta(obj)
