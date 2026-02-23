@@ -3,8 +3,7 @@
 
 {% block scripts %}
 {{ block.super }}
-<script type="text/javascript" src="{% static 'webclient/js/tile_system.js' %}"></script>
-<script type="text/javascript" src="{% static 'webclient/js/dbforged_canvas_demo.js' %}"></script>
+<script type="text/javascript" src="{% static 'webclient/js/dbforged_canvas_demo.js' %}?v=5"></script>
 <script type="text/javascript">
   (function () {
     "use strict";
@@ -44,38 +43,47 @@
 
       var hud = document.createElement("div");
       hud.id = "dbforged-scouter-hud";
+      // DBZ Scouter aesthetic: Glassmorphic green filter, scanlines, and glowing data
       hud.style.cssText = [
         "position:absolute",
-        "top:8px",
-        "right:8px",
+        "top:12px",
+        "right:12px",
         "z-index:30",
         "pointer-events:none",
-        "width:min(320px, calc(100% - 16px))",
-        "background:linear-gradient(180deg, rgba(6,18,10,0.92), rgba(4,10,6,0.94))",
-        "border:1px solid rgba(90,255,120,0.35)",
-        "box-shadow:0 0 0 1px rgba(0,0,0,0.55) inset, 0 6px 18px rgba(0,0,0,0.45)",
-        "color:#caffd5",
-        "font:12px/1.25 Consolas, 'Courier New', monospace",
-        "padding:8px 10px",
-        "border-radius:6px",
-        "display:none"
+        "width:min(340px, calc(100% - 24px))",
+        "background:linear-gradient(135deg, rgba(8,35,16,0.7), rgba(0,18,6,0.85))",
+        "backdrop-filter:blur(8px)",
+        "-webkit-backdrop-filter:blur(8px)",
+        "border:1px solid rgba(80,255,110,0.5)",
+        "border-radius:12px",
+        "box-shadow:0 0 20px rgba(10,255,80,0.15), inset 0 0 15px rgba(50,255,100,0.1)",
+        "color:#ccffda",
+        "font:13px/1.3 'Inter', 'Roboto', 'Courier New', sans-serif",
+        "padding:12px 14px",
+        "display:none",
+        "overflow:hidden"
       ].join(";");
 
       hud.innerHTML = [
-        "<div style='display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;'>",
-        "  <div id='dbf-hud-name' style='font-weight:bold;color:#e8fff0;'>SCOUTER</div>",
-        "  <div id='dbf-hud-pl' style='color:#98ffb0;'>PL: --</div>",
-        "</div>",
-        "<div style='margin:4px 0;'>",
-        "  <div style='display:flex;justify-content:space-between;gap:8px;'><span>HP</span><span id='dbf-hud-hp-text'>--/--</span></div>",
-        "  <div style='height:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;'>",
-        "    <div id='dbf-hud-hp-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#38ff7a,#8bff9c);'></div>",
+        "<!-- Scanline overlay -->",
+        "<div style='position:absolute;inset:0;background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(150,255,150,0.03) 2px, rgba(150,255,150,0.03) 4px);pointer-events:none;'></div>",
+        "<!-- Content -->",
+        "<div style='position:relative;z-index:1;'>",
+        "  <div style='display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;border-bottom:1px solid rgba(100,255,120,0.3);padding-bottom:4px;'>",
+        "    <div id='dbf-hud-name' style='font-weight:900;font-size:15px;color:#f0fff4;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 5px rgba(100,255,120,0.6);'>SCOUTER_LINK</div>",
+        "    <div id='dbf-hud-pl' style='font-weight:bold;color:#a3ffc2;font-size:14px;text-shadow:0 0 8px rgba(50,255,100,0.5);'>PL: ERR</div>",
         "  </div>",
-        "</div>",
-        "<div style='margin:4px 0 0;'>",
-        "  <div style='display:flex;justify-content:space-between;gap:8px;'><span>KI</span><span id='dbf-hud-ki-text'>--/--</span></div>",
-        "  <div style='height:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;'>",
-        "    <div id='dbf-hud-ki-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#47c8ff,#86f2ff);'></div>",
+        "  <div style='margin-bottom:8px;'>",
+        "    <div style='display:flex;justify-content:space-between;font-size:11px;font-weight:bold;margin-bottom:3px;color:#a8ffc4;'><span>HP</span><span id='dbf-hud-hp-text'>0/0</span></div>",
+        "    <div style='height:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(100,255,120,0.2);border-radius:4px;overflow:hidden;'>",
+        "      <div id='dbf-hud-hp-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#24d15d,#6dff9e);box-shadow:0 0 10px rgba(80,255,120,0.8);transition:width 0.3s ease-out;'></div>",
+        "    </div>",
+        "  </div>",
+        "  <div>",
+        "    <div style='display:flex;justify-content:space-between;font-size:11px;font-weight:bold;margin-bottom:3px;color:#b3fbff;'><span>KI</span><span id='dbf-hud-ki-text'>0/0</span></div>",
+        "    <div style='height:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(100,220,255,0.2);border-radius:4px;overflow:hidden;'>",
+        "      <div id='dbf-hud-ki-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#00aeff,#80ddff);box-shadow:0 0 10px rgba(0,180,255,0.8);transition:width 0.3s ease-out;'></div>",
+        "    </div>",
         "  </div>",
         "</div>"
       ].join("");
@@ -97,26 +105,33 @@
 
       var panel = document.createElement("div");
       panel.id = "dbforged-player-panel";
+      // Capsule Corp Aesthetic: Slate blue/white tech card
       panel.style.cssText = [
         "position:absolute",
-        "top:8px",
-        "left:8px",
+        "top:12px",
+        "left:12px",
         "z-index:30",
         "pointer-events:none",
-        "width:min(340px, calc(100% - 16px))",
-        "background:linear-gradient(180deg, rgba(18,12,6,0.92), rgba(10,7,4,0.94))",
-        "border:1px solid rgba(255,190,90,0.28)",
-        "box-shadow:0 0 0 1px rgba(0,0,0,0.55) inset, 0 6px 18px rgba(0,0,0,0.45)",
-        "color:#ffe6bd",
-        "font:12px/1.3 Consolas, 'Courier New', monospace",
-        "padding:8px 10px",
-        "border-radius:6px",
+        "width:min(300px, calc(100% - 24px))",
+        "background:linear-gradient(145deg, rgba(15,25,35,0.85), rgba(5,10,15,0.95))",
+        "backdrop-filter:blur(10px)",
+        "-webkit-backdrop-filter:blur(10px)",
+        "border:1px solid rgba(100,180,255,0.4)",
+        "border-left:4px solid #00aeff",
+        "border-radius:6px 12px 12px 6px",
+        "box-shadow:0 8px 32px rgba(0,0,0,0.5)",
+        "color:#d4e6f1",
+        "font:12px/1.4 'Inter', 'Roboto', 'Segoe UI', sans-serif",
+        "padding:12px 16px",
         "display:none"
       ].join(";");
 
       panel.innerHTML = [
-        "<div style='font-weight:bold;color:#fff0d2;margin-bottom:6px;'>PLAYER</div>",
-        "<div id='dbf-player-panel-lines' style='display:grid;grid-template-columns:auto 1fr;gap:2px 8px;'></div>"
+        "<div style='display:flex;align-items:center;margin-bottom:10px;'>",
+        "  <div style='flex-grow:1;font-weight:800;font-size:14px;color:#ffffff;letter-spacing:1px;text-transform:uppercase;'>System Identity</div>",
+        "  <div style='font-size:10px;color:#00aeff;border:1px solid #00aeff;padding:2px 4px;border-radius:3px;background:rgba(0,174,255,0.1);'>ACTIVE</div>",
+        "</div>",
+        "<div id='dbf-player-panel-lines' style='display:grid;grid-template-columns:35% 65%;gap:4px 8px;font-size:11px;'></div>"
       ].join("");
 
       host.appendChild(panel);
@@ -205,64 +220,7 @@
       }
     }
 
-    function processEventInNode(node) {
-      if (!(node instanceof HTMLElement)) return;
-      var rawHtml = node.innerHTML || "";
-      var text = htmlToText(rawHtml);
-      if (text.indexOf("@event ") < 0) return;
-
-      var eventResult = tryHandleEventPacket(rawHtml);
-      if (!eventResult.handled) return;
-
-      // Keep any visible prefix before the event payload (e.g. a prompt line),
-      // otherwise hide the debug event line completely.
-      if (eventResult.html && htmlToText(eventResult.html)) {
-        node.innerHTML = eventResult.html;
-      } else {
-        node.style.display = "none";
-      }
-    }
-
-    function installEventLeakFallback() {
-      var target = document.getElementById("messagewindow");
-      if (!target) {
-        setTimeout(installEventLeakFallback, 300);
-        return;
-      }
-      if (target.__dbforgedEventLeakFallbackInstalled) return;
-      target.__dbforgedEventLeakFallbackInstalled = true;
-
-      target.querySelectorAll("div").forEach(processEventInNode);
-
-      var observer = new MutationObserver(function (mutations) {
-        mutations.forEach(function (mutation) {
-          mutation.addedNodes.forEach(function (node) {
-            if (!(node instanceof HTMLElement)) return;
-            processEventInNode(node);
-            node.querySelectorAll && node.querySelectorAll("div").forEach(processEventInNode);
-          });
-        });
-      });
-      observer.observe(target, { childList: true, subtree: true });
-    }
-
-    function tryHandleEventPacket(rawHtml) {
-      var text = htmlToText(rawHtml || "");
-      var idx = text.indexOf("@event ");
-      if (idx < 0) return { handled: false, html: rawHtml };
-
-      var packet = safeJsonParse(text.slice(idx + 7));
-      if (packet) {
-        routeEventPacket(packet);
-      }
-
-      // Always suppress the event payload; if it was appended after user-visible text,
-      // keep the prefix so prompts (like character creation) still render.
-      var htmlIdx = String(rawHtml || "").indexOf("@event ");
-      if (htmlIdx < 0) return { handled: true, html: "" };
-      var prefixHtml = String(rawHtml || "").slice(0, htmlIdx).trim();
-      return { handled: true, html: prefixHtml };
-    }
+    // Legacy MutationObservers and regex-text sniffers removed in favor of native OOB websockets
 
     function looksLikeWelcome(html) {
       var t = htmlToText(html).toLowerCase();
@@ -346,33 +304,43 @@
       if (existingWindow.length) {
         ensureLogo(existingWindow[0]);
         bootstrapExistingWelcome(existingWindow[0]);
-        installEventLeakFallback();
       }
 
       window.plugins.defaultout.onText = function (args, kwargs) {
         var html = (args && args[0]) || "";
+
         var mwin = $("#messagewindow");
         if (!mwin.length) {
           return originalOnText(args, kwargs);
         }
 
-        var eventResult = tryHandleEventPacket(html);
-        if (eventResult.handled) {
-          if (!eventResult.html) {
-            return true;
-          }
-          html = eventResult.html;
-        }
-
-        if (!htmlToText(html)) {
-          return true;
-        }
+        // Legacy interceptor removed
 
         if (args && args.length) {
           args = Array.prototype.slice.call(args);
           args[0] = html;
         } else {
           args = [html];
+        }
+
+        // Evennia EvMenu sends ANSI clear screen codes: ESC[2J ESC[H
+        // The webclient doesn't natively support clearing the DOM this way,
+        // so it renders the escape characters as blank boxes and duplicates the menu.
+        // We intercept those sequences here, manually clear the DOM, and strip the codes.
+        if (typeof html === "string") {
+          var plainText = $("<div/>").html(html).text();
+          if (plainText.indexOf("[2J") !== -1 && plainText.indexOf("[H") !== -1) {
+            mwin.empty(); // Nuke the massive duplicated DOM history!
+
+            var hIndex = html.lastIndexOf("[H");
+            if (hIndex !== -1) {
+              var newHtml = html.substring(hIndex + 2);
+              // Clean up any dangling span closures left behind by Evennia's ANSI-to-HTML wrapper
+              newHtml = newHtml.replace(/^\s*<\/span>\s*/, "");
+              html = newHtml;
+              if (args[0]) args[0] = html;
+            }
+          }
         }
 
         ensureLogo(mwin[0]);
@@ -388,13 +356,27 @@
       };
 
       window.plugins.defaultout.__dbforgedWrapped = true;
-      installEventLeakFallback();
+    }
+
+    function bindOOBEvents() {
+      if (!window.Evennia || !window.Evennia.emitter) {
+        setTimeout(bindOOBEvents, 300);
+        return;
+      }
+      window.Evennia.emitter.on("dbforged_event", function (args, kwargs) {
+        var pkt = (args && args.length > 0) ? args[0] : kwargs;
+        routeEventPacket(pkt);
+      });
     }
 
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", installWelcomeOutputOverride, { once: true });
+      document.addEventListener("DOMContentLoaded", function () {
+        installWelcomeOutputOverride();
+        bindOOBEvents();
+      }, { once: true });
     } else {
       installWelcomeOutputOverride();
+      bindOOBEvents();
     }
   })();
 </script>

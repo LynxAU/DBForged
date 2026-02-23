@@ -308,7 +308,12 @@ class Account(DefaultAccount):
 
     """
 
-    def _db_menu_box(self, title, lines, width=120):
+    def _db_menu_box(self, title, lines, width=120, session=None):
+        if session:
+            state = getattr(self.ndb, "_db_menu_states", {}).get(getattr(session, "sessid", 0))
+            if state and "error_msg" in state:
+                lines = [f"|r*** {state.pop('error_msg')} ***|n", ""] + lines
+
         inner = max(40, width - 2)
         top = f"|b+{'-' * inner}+|n"
         bottom = top
@@ -383,7 +388,17 @@ class Account(DefaultAccount):
         return state
 
     def _db_menu_send(self, session=None):
-        self.msg(self._db_menu_clear() + self.at_look(target=self.characters, session=session), session=session)
+        lines = [
+            "|yDragonballForged|n",
+            "",
+            "|c1|n - |wEnter Game|n",
+            "|c2|n - |wCreate Character|n",
+            "|c3|n - |wDelete Character|n",
+            "|c4|n - |wExit|n",
+            "",
+            "|wEnter 1, 2, 3, or 4.|n",
+        ]
+        self.msg(self._db_menu_clear() + self._db_menu_box("MAIN MENU", lines, session=session), session=session)
         self._db_menu_state(session=session)["menu_sent"] = True
 
     def _db_menu_character_lines(self):
@@ -407,26 +422,18 @@ class Account(DefaultAccount):
         if not sessions:
             return ""
 
-        lines = [
-            "|yDragonballForged|n",
-            "",
-            "|c1|n - |wEnter Game|n",
-            "|c2|n - |wCreate Character|n",
-            "|c3|n - |wDelete Character|n",
-            "|c4|n - |wExit|n",
-            "",
-            "|wEnter 1, 2, 3, or 4.|n",
-        ]
         if session:
-            self._db_menu_state(session=session)["menu_sent"] = True
-        return self._db_menu_box("MAIN MENU", lines)
+            self._db_menu_route_ooc_input("look", session=session)
+            
+        return ""
 
     def _db_menu_render_charlist(self, session=None, for_delete=False):
         chars = [char for char in self.characters if char]
         if not chars:
             msg = "You have no characters to delete!" if for_delete else "You have no characters yet!"
-            self.msg(f"|r{msg}|n", session=session)
+            state = self._db_menu_state(session=session)
             self._db_menu_reset(session=session)
+            state["error_msg"] = msg
             self._db_menu_send(session=session)
             return
         label = "DELETE CHARACTER" if for_delete else "ENTER GAME"
@@ -440,7 +447,7 @@ class Account(DefaultAccount):
         else:
             lines.append("Select a character number to enter game.")
         lines.append("|cB|n - |wGo Back|n")
-        self.msg(self._db_menu_box(label, lines), session=session)
+        self.msg(self._db_menu_clear() + self._db_menu_box(label, lines, session=session), session=session)
 
     def _db_menu_get_chars(self):
         return [char for char in self.characters if char]
@@ -696,7 +703,7 @@ class Account(DefaultAccount):
         state["prev_mode"] = state.get("mode", "create")
         state["mode"] = "create_cancel_confirm"
         self.msg(
-            self._db_menu_box(
+            self._db_menu_clear() + self._db_menu_box(
                 "CANCEL CREATION",
                 [
                     "|rCancel creation?|n",
@@ -705,6 +712,7 @@ class Account(DefaultAccount):
                     "",
                     "|cB|n - Back",
                 ],
+                session=session
             ),
             session=session,
         )
@@ -785,7 +793,7 @@ class Account(DefaultAccount):
                     "|wB|n = Back   |wC|n = Cancel",
                 ]
             )
-        self.msg(self._db_menu_box("CHARACTER CREATION", lines), session=session)
+        self.msg(self._db_menu_clear() + self._db_menu_box("CHARACTER CREATION", lines, session=session), session=session)
 
     def _db_menu_handle_create_input(self, raw_string, session=None):
         state = self._db_menu_state(session=session)
@@ -857,7 +865,7 @@ class Account(DefaultAccount):
         else:
             cleaned, error = self._db_menu_choice_value(stepdef["options"], text)
         if error:
-            self.msg(f"|r{error}|n", session=session)
+            state["error_msg"] = error
             self._db_menu_prompt_create(session=session)
             return True
         data[field] = cleaned
@@ -885,7 +893,7 @@ class Account(DefaultAccount):
             state.pop("prev_mode", None)
             self._db_menu_prompt_create(session=session)
             return True
-        self.msg("|rPlease enter 1, 2, or B.|n", session=session)
+        state["error_msg"] = "Please enter 1, 2, or B."
         self._db_menu_start_create_cancel_confirm(session=session)
         return True
 
@@ -923,21 +931,22 @@ class Account(DefaultAccount):
 
     def _db_menu_handle_delete_select(self, raw_string, session=None):
         text = (raw_string or "").strip()
+        state = self._db_menu_state(session=session)
         if text.lower() in {"b", "back"}:
             self._db_menu_reset(session=session)
             self._db_menu_send(session=session)
             return True
         char, err = self._db_menu_pick_char_by_input(text)
         if err:
-            self.msg(f"|r{err}|n", session=session)
+            state["error_msg"] = err
             self._db_menu_render_charlist(session=session, for_delete=True)
             return True
         if char.sessions.all():
-            self.msg("|rThat character is currently in use and cannot be deleted.|n", session=session)
+            state["error_msg"] = "That character is currently in use and cannot be deleted."
             self._db_menu_render_charlist(session=session, for_delete=True)
             return True
         if not char.access(self, "delete"):
-            self.msg("|rYou do not have permission to delete that character.|n", session=session)
+            state["error_msg"] = "You do not have permission to delete that character."
             self._db_menu_render_charlist(session=session, for_delete=True)
             return True
         state = self._db_menu_state(session=session)
@@ -946,7 +955,7 @@ class Account(DefaultAccount):
         state["delete_dbref"] = char.dbref
         state["delete_name"] = char.key
         self.msg(
-            self._db_menu_box(
+            self._db_menu_clear() + self._db_menu_box(
                 "DELETE CONFIRMATION",
                 [
                     f"|rDelete|n |w{char.key}|n",
@@ -957,6 +966,7 @@ class Account(DefaultAccount):
                     "",
                     "|wB|n = Back",
                 ],
+                session=session
             ),
             session=session,
         )
@@ -972,9 +982,9 @@ class Account(DefaultAccount):
             return True
         expected = state.get("delete_name")
         if text != expected:
-            self.msg("|rName mismatch. Deletion cancelled.|n", session=session)
             state.clear()
             state["mode"] = "delete_select"
+            state["error_msg"] = "Name mismatch. Deletion cancelled."
             self._db_menu_render_charlist(session=session, for_delete=True)
             return True
         target = next((c for c in self._db_menu_get_chars() if c.dbref == state.get("delete_dbref")), None)
@@ -1014,19 +1024,21 @@ class Account(DefaultAccount):
             return True
         if key in {"4", "exit", "quit"}:
             return False  # let normal quit command processing happen via execute_cmd wrapper
-        self.msg("|rInvalid menu option.|n Type 1, 2, 3, or 4.", session=session)
+        state = self._db_menu_state(session=session)
+        state["error_msg"] = "Invalid menu option. Type 1, 2, 3, or 4."
         self._db_menu_send(session=session)
         return True
 
     def _db_menu_handle_enter_select(self, raw_string, session=None):
         text = (raw_string or "").strip()
+        state = self._db_menu_state(session=session)
         if text.lower() in {"b", "back"}:
             self._db_menu_reset(session=session)
             self._db_menu_send(session=session)
             return True
         char, err = self._db_menu_pick_char_by_input(text)
         if err:
-            self.msg(f"|r{err}|n", session=session)
+            state["error_msg"] = err
             self._db_menu_render_charlist(session=session, for_delete=False)
             return True
         # Resolve to the canonical live session object attached to this account.
@@ -1041,15 +1053,50 @@ class Account(DefaultAccount):
                 raise RuntimeError("Puppeting did not attach to this session.")
             self.db._last_puppet = char
         except Exception as exc:
-            self.msg(f"|rYou cannot enter |w{char.key}|n: {exc}|n", session=session)
+            state = self._db_menu_state(session=session)
+            state["error_msg"] = f"You cannot enter {char.key}: {exc}"
             self._db_menu_send(session=session)
         return True
 
     def _db_menu_route_ooc_input(self, raw_string, session=None):
         state = self._db_menu_state(session=session)
         mode = state.get("mode", "main")
+        text = (raw_string or "").strip().lower()
+
+        # Intercept 'look' to redraw the current menu state instead of processing it as input
+        if text in {"look", "l"}:
+            if mode == "main":
+                self._db_menu_send(session=session)
+            elif mode == "enter_select":
+                self._db_menu_render_charlist(session=session, for_delete=False)
+            elif mode == "delete_select":
+                self._db_menu_render_charlist(session=session, for_delete=True)
+            elif mode == "create":
+                self._db_menu_prompt_create(session=session)
+            elif mode == "create_cancel_confirm":
+                self._db_menu_start_create_cancel_confirm(session=session)
+            elif mode == "delete_confirm":
+                char_key = state.get("delete_name", "Unknown")
+                self.msg(
+                    self._db_menu_clear() + self._db_menu_box(
+                        "DELETE CONFIRMATION",
+                        [
+                            f"|rDelete|n |w{char_key}|n",
+                            "This cannot be undone.",
+                            "",
+                            "Type the character name exactly to confirm deletion:",
+                            f"|w{char_key}|n",
+                            "",
+                            "|wB|n = Back",
+                        ],
+                        session=session
+                    ),
+                    session=session,
+                )
+            return True
+
         if mode == "main":
-            if (raw_string or "").strip() == "4":
+            if text == "4":
                 # Explicit menu exit; route to built-in quit command.
                 super().execute_cmd("quit", session=session)
                 return True

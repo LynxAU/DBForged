@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <title>Dragonball Forged</title>
+
+    <link rel="stylesheet"
+        href="{% static 'custom_client/css/styles.css' %}?v={{ request.session.session_key|default:'1' }}">
+
+    <!-- Evennia Webclient Config Override -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        window.wsurl = `${wsProto}//${window.location.hostname}:8245`;
+        window.csessid = "{{ request.session.session_key|default:'' }}";
+        window.wsactive = true;
+        window.cuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    </script>
+    <script src="{% static 'webclient/js/evennia.js' %}"></script>
+</head>
+
+<body>
+
+    <!-- Full-screen App Container -->
+    <div id="dbf-app">
+
+        <!-- CENTER STAGE (MAP/CANVAS) -->
+        <div id="canvas-container">
+            <canvas id="game-canvas"></canvas>
+        </div>
+
+        <!-- PLAYER HUD (Self State) -->
+        <div id="player-hud" class="glass-panel" style="display:none;">
+            <div class="hud-header">
+                <div class="entity-name" id="ply-name">UNKNOWN</div>
+                <div class="power-level" id="ply-pl">PL: 0</div>
+            </div>
+
+            <div class="resource-group">
+                <div class="resource-label"><span>HP</span><span id="ply-hp-txt">0/0</span></div>
+                <div class="resource-track">
+                    <div class="resource-fill fill-hp" id="ply-hp-bar"></div>
+                </div>
+            </div>
+
+            <div class="resource-group">
+                <div class="resource-label"><span>KI</span><span id="ply-ki-txt">0/0</span></div>
+                <div class="resource-track">
+                    <div class="resource-fill fill-ki" id="ply-ki-bar"></div>
+                </div>
+            </div>
+
+            <div class="resource-group">
+                <div class="resource-label"><span>STAMINA</span><span id="ply-st-txt">0/0</span></div>
+                <div class="resource-track">
+                    <div class="resource-fill fill-stam" id="ply-st-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCOUTER HUD (Target Detail) -->
+        <div id="scouter-hud" class="glass-panel" style="display:none;">
+            <div class="hud-header">
+                <div class="entity-name" id="scout-name">TARGET</div>
+                <div class="power-level" id="scout-pl">PL: 0</div>
+            </div>
+            <div class="resource-group">
+                <div class="resource-label"><span>TARGET HP</span><span id="scout-hp-txt">0%</span></div>
+                <div class="resource-track">
+                    <div class="resource-fill fill-hp" id="scout-hp-bar"></div>
+                </div>
+            </div>
+            <div class="resource-group">
+                <div class="resource-label"><span>TARGET KI</span><span id="scout-ki-txt">0%</span></div>
+                <div class="resource-track">
+                    <div class="resource-fill fill-ki" id="scout-ki-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EVENT LOG / CHAT -->
+        <div id="event-log" class="glass-panel">
+            <div class="log-tabs">
+                <button class="log-tab active" data-filter="all">All</button>
+                <button class="log-tab" data-filter="combat">Combat</button>
+                <button class="log-tab" data-filter="system">System</button>
+            </div>
+            <div class="log-content" id="log-output">
+                <div class="log-entry system">Initializing DBForged OS...</div>
+            </div>
+        </div>
+
+        <!-- ACTION BAR -->
+        <div id="action-bar">
+            <div class="quick-slots">
+                <!-- 1-5 -->
+                <div class="action-slot has-skill" onclick="sendCmd('attack')"><span class="slot-hotkey">1</span>⚔️
+                </div>
+                <div class="action-slot" onclick="sendCmd('charge')"><span class="slot-hotkey">2</span>⚡</div>
+                <div class="action-slot"><span class="slot-hotkey">3</span></div>
+                <div class="action-slot"><span class="slot-hotkey">4</span></div>
+                <div class="action-slot"><span class="slot-hotkey">5</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- OVERLAY MANAGER -->
+    <div id="screen-manager">
+        <!-- Login Screen -->
+        <div id="screen-login" class="glass-panel screen-panel">
+            <h1>DBForged</h1>
+            <div class="input-group">
+                <label>Account / Call Sign</label>
+                <input type="text" id="login-user" placeholder="Enter username" autocomplete="username">
+            </div>
+            <div class="input-group">
+                <label>Security Code</label>
+                <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password">
+            </div>
+            <button class="btn" id="btn-login">Initialize Connect</button>
+            <div class="form-error" id="login-error"></div>
+        </div>
+
+    </div>
+
+    <!-- Boot Scripts -->
+    <script type="module" src="{% static 'custom_client/js/core/app.js' %}"></script>
+</body>
+
+</html>

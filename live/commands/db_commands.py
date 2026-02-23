@@ -403,6 +403,28 @@ class CmdFlee(Command):
         emit_combat_event(caller.location, caller, None, {"subtype": "flee"})
 
 
+class CmdTarget(Command):
+    key = "target"
+    locks = "cmd:all()"
+    help_category = "DB"
+    
+    def func(self):
+        caller = self.caller
+        if not self.args:
+            caller.msg("Usage: target <name>")
+            return
+            
+        target = _search_target(caller, self.args.strip())
+        if not target or target == caller:
+            return
+            
+        caller.db.combat_target = target.id
+        caller.msg(f"Target set to {target.key}.")
+        # Send target's stats back to caller for the Scouter HUD
+        if hasattr(target, "get_current_pl"):
+            emit_entity_delta(target, recipients=[caller])
+
+
 class CmdCharge(Command):
     key = "charge"
     locks = "cmd:all()"
@@ -1208,6 +1230,8 @@ class CmdMap(Command):
             return
 
         coords = getattr(caller.db, "coords", (0, 0, 0))
+        if coords is None:
+            coords = (0, 0, 0)
         from world.map_utils import render_map
         map_str = render_map(coords[0], coords[1], radius=7, target_obj=caller)
         
@@ -1216,6 +1240,9 @@ class CmdMap(Command):
             zone_name = loc.tags.get(category="zone")
             
         caller.msg(f"|y[|c {zone_name} |y]|n |w({coords[0]}, {coords[1]})|n\n" + map_str)
+        
+        from world.events import emit_map_data
+        emit_map_data(caller, coords[0], coords[1], radius=7)
 
 
 class CmdLogoTest(Command):

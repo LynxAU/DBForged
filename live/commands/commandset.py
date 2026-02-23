@@ -23,6 +23,7 @@ from commands.db_commands import (
     CmdSense,
     CmdSuppress,
     CmdTech,
+    CmdTarget,
     CmdTrain,
     CmdTransform,
     CmdMap,
@@ -62,6 +63,7 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdRacial())
         self.add(CmdQuests())
         self.add(CmdQuest())
+        self.add(CmdTarget())
         self.add(CmdLSSJ())
         self.add(CmdTalk())
         self.add(CmdSpawnTrainer())

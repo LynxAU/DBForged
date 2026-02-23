@@ -86,27 +86,42 @@
       "z-index:20",
       "display:flex",
       "flex-direction:column",
-      "border-bottom:1px solid rgba(255,255,255,0.05)",
-      "background:linear-gradient(180deg, rgba(5,9,18,0.25), rgba(5,9,18,0.08) 35%, rgba(5,9,18,0.0))",
+      // Clean scanline shadow to blend into the text window below
+      "background:linear-gradient(180deg, rgba(4,8,12,0.95), rgba(4,8,12,0.4) 30%, transparent)",
+      "box-shadow:inset 0 10px 20px rgba(0,0,0,0.8)"
     ].join(";");
 
     const status = document.createElement("div");
     status.id = "dbforged-canvas-status";
     status.style.cssText = [
-      "font:12px/1.2 monospace",
-      "color:#d7e6ff",
-      "text-shadow:0 1px 2px #000",
-      "padding:6px 8px",
-      "background:linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0))",
+      "font:11px/1.2 'Inter', 'Roboto', monospace",
+      "text-transform:uppercase",
+      "letter-spacing:1px",
+      "color:#00aeff",
+      "padding:6px 12px",
+      "background:rgba(0,174,255,0.08)",
+      "border-bottom:1px solid rgba(0,174,255,0.3)",
+      "border-right:1px solid rgba(0,174,255,0.3)",
+      "border-bottom-right-radius:8px",
       "width:max-content",
       "max-width:80%",
-      "white-space:pre-wrap",
+      "box-shadow:0 4px 12px rgba(0,0,0,0.5)",
+      "backdrop-filter:blur(4px)"
     ].join(";");
-    status.textContent = "DBForged Canvas Demo initializing...";
+    status.textContent = "SYSTEM_INITIALIZING...";
 
     const canvas = document.createElement("canvas");
     canvas.id = "dbforged-canvas";
-    canvas.style.cssText = "width:100%; height:0px; display:block; image-rendering: pixelated; transition: height 120ms ease;";
+    canvas.style.cssText = [
+      "width:100%",
+      "height:0px",
+      "display:block",
+      "image-rendering:pixelated",
+      "transition:height 200ms cubic-bezier(0.2, 0.8, 0.2, 1)", // Smooth drop down
+      "border-bottom:2px solid #00aeff",
+      "box-shadow:0 15px 35px rgba(0,0,0,0.8), 0 2px 10px rgba(0,174,255,0.3)",
+      "background:#040608" // Deep sci-fi black for map contrast
+    ].join(";");
 
     overlay.appendChild(status);
     overlay.appendChild(canvas);
@@ -175,8 +190,9 @@
 
   function applyPacket(packet) {
     if (!packet || !packet.type) return;
+    console.log("[CanvasDemo] applyPacket received:", packet.type, packet);
 
-    if (packet.type === "entity_delta" && packet.entity) {
+    if (["entity_delta", "map_data", "vfx_trigger", "combat_event"].includes(packet.type)) {
       if (!demoState.activeScene) {
         demoState.activeScene = true;
         if (demoState.canvas) {
@@ -184,6 +200,9 @@
           setTimeout(resizeCanvas, 10);
         }
       }
+    }
+
+    if (packet.type === "entity_delta" && packet.entity) {
       const entity = packet.entity;
       const prev = demoState.entities.get(entity.id) || {};
 
@@ -228,40 +247,21 @@
     }
   }
 
-  function handleMessageNode(node) {
-    if (!(node instanceof HTMLElement)) return;
-    const text = (node.textContent || "").trim();
-    if (!text.startsWith("@event ")) return;
-    const packet = safeJsonParse(text.slice(7));
-    if (!packet) return;
-    // Hide raw event packets in the text pane; keep for debugging if needed by toggling below.
-    node.style.display = "none";
-    applyPacket(packet);
-  }
-
-  function attachMessageObserver() {
-    const target = document.querySelector("#messagewindow");
-    if (!target) {
-      setTimeout(attachMessageObserver, 500);
+  function bindEvenniaEvents() {
+    if (!window.Evennia || !window.Evennia.emitter) {
+      setTimeout(bindEvenniaEvents, 500);
       return;
     }
 
-    // Process any existing buffered messages first.
-    target.querySelectorAll("div").forEach(handleMessageNode);
-
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          handleMessageNode(node);
-          if (node instanceof HTMLElement) {
-            node.querySelectorAll?.("div").forEach(handleMessageNode);
-          }
-        }
+    window.Evennia.emitter.on("dbforged_event", (args, kwargs) => {
+      // Evennia passes OOB payloads as either the first argument or in kwargs depending on structure
+      let packet = (args && args.length > 0) ? args[0] : kwargs;
+      if (packet) {
+        applyPacket(packet);
       }
     });
-    observer.observe(target, { childList: true, subtree: true });
-    demoState.observer = observer;
-    setStatus("Watching @event packets in message window.");
+
+    setStatus("Listening for native Evennia OOB dbforged_events.");
   }
 
   function layoutEntity(entity, canvasW, canvasH) {
@@ -394,7 +394,7 @@
     if (demoState.initialized) return;
     demoState.initialized = true;
     ensureOverlay();
-    attachMessageObserver();
+    bindEvenniaEvents();
 
     // Load tile system
     try {

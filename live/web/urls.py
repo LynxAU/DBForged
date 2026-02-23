@@ -22,7 +22,9 @@ from evennia.web.urls import urlpatterns as evennia_default_urlpatterns
 urlpatterns = [
     # website
     path("", include("web.website.urls")),
-    # webclient
+    # DBForged custom visual client
+    path("custom_client/", include("web.custom_client.urls")),
+    # vanilla webclient
     path("webclient/", include("web.webclient.urls")),
     # web admin
     path("admin/", include("web.admin.urls")),

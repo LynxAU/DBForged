@@ -34,15 +34,14 @@ def emit_event(receiver, event_type, payload):
     if not _client_events_enabled():
         return
     packet = {"type": event_type, "ts": round(time.time(), 3), **payload}
-    receiver.msg(EVENT_PREFIX + json.dumps(packet, separators=(",", ":")))
+    receiver.msg(dbforged_event=packet)
 
 
 def emit_event_room(room, event_type, payload, exclude=None):
     if not _client_events_enabled():
         return
     packet = {"type": event_type, "ts": round(time.time(), 3), **payload}
-    msg = EVENT_PREFIX + json.dumps(packet, separators=(",", ":"))
-    room.msg_contents(msg.replace("{", "{{").replace("}", "}}"), exclude=exclude or [])
+    room.msg_contents(dbforged_event=packet, exclude=exclude or [])
 
 
 def emit_entity_delta(entity, recipients=None):
@@ -56,6 +55,8 @@ def emit_entity_delta(entity, recipients=None):
         "aura_color": entity.db.aura_color or "white",
     }
     coords = getattr(entity.db, "coords", (0, 0, 0))
+    if coords is None:
+        coords = (0, 0, 0)
     payload = {
         "entity": {
             "id": entity.id,
@@ -64,12 +65,12 @@ def emit_entity_delta(entity, recipients=None):
             "room_name": entity.location.key if entity.location else None,
             "position": {"x": coords[0], "y": coords[1], "layer": coords[2]},
             "sprite_id": entity.db.sprite_id or "sprite_humanoid_default",
-            "race": appearance["race"],
-            "sex": appearance["sex"],
             "appearance": appearance,
             **stats,
         }
     }
+    
+    # Broadcast to observers
     if recipients:
         for obj in recipients:
             emit_event(obj, "entity_delta", payload)
@@ -90,10 +91,13 @@ def emit_map_data(player, center_x, center_y, radius=15):
     # Fetch GridRooms in the box
     candidates = ObjectDB.objects.filter(db_typeclass_path__contains="GridRoom")
     grid = []
-    z = player.db.coords[2] if player.db.coords and len(player.db.coords) > 2 else 0
+    player_coords = player.db.coords
+    z = player_coords[2] if player_coords and len(player_coords) > 2 else 0
     
     for r in candidates:
         rc = r.db.coords
+        if rc is None:
+            continue
         if rc and rc[2] == z and abs(rc[0] - center_x) <= radius and abs(rc[1] - center_y) <= radius:
             grid.append({
                 "x": rc[0],
