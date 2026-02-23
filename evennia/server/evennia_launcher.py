@@ -89,7 +89,6 @@ def get_servername_from_settings():
 # Operational setup
 
 SERVERNAME_DISPLAY = None  # Cached servername for display purposes
-
 SERVER_LOGFILE = None
 PORTAL_LOGFILE = None
 HTTP_LOGFILE = None
@@ -2047,7 +2046,7 @@ def run_menu():
         # menu loop - show configured SERVERNAME instead of gamedir
         gameinfo = "/{}".format(SERVERNAME_DISPLAY)
         leninfo = len(gameinfo)
-        line = "|" + " " * (61 - leninfo) + gameinfo + " " * "|"
+        line = "|" + " " * (61 - leninfo) + gameinfo + " " * 2 + "|"
 
         print(MENU.format(gameinfo=line))
         inp = input(" option > ")

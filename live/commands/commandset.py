@@ -34,6 +34,9 @@ from commands.db_commands import (
     CmdTalk,
     CmdSpawnTrainer,
     CmdUseUltimate,
+    CmdGridMove,
+    CmdTeleport,
+    CmdNPCStress,
 )
 
 
@@ -71,3 +74,6 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdLogoTest())
         self.add(CmdLogout())
         self.add(CmdHelpDB())
+        self.add(CmdGridMove())
+        self.add(CmdTeleport())
+        self.add(CmdNPCStress())
