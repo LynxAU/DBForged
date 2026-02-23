@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DBForged Combat Catalog (DBZ + DBS)</title>
+  <link rel="stylesheet" href="styles.css?v=20260222c">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero__fx"></div>
+      <div class="hero__content">
+        <p class="eyebrow">DBFORGED DESIGN TOOL</p>
+        <h1>Dragon Ball Z + Super Combat Catalog</h1>
+        <p class="lede">
+          Browse a canon-facing, gameplay-focused catalog of abilities, a curated top 50 roster, racial baselines for DBForged races, and a separate transformation compendium.
+        </p>
+        <div class="hero__meta">
+          <span class="pill" id="statAbilities">0 abilities</span>
+          <span class="pill" id="statTop50">0 top picks</span>
+          <span class="pill" id="statRacials">0 racials</span>
+          <span class="pill" id="statTransforms">0 transformations</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="controls">
+        <section class="panel">
+          <h2>View</h2>
+          <div class="tabs" id="tabs">
+            <button class="tab is-active" data-tab="abilities">All Abilities</button>
+            <button class="tab" data-tab="top50">Top 50</button>
+            <button class="tab" data-tab="racials">Racial Baselines</button>
+            <button class="tab" data-tab="transformations">Transformations</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Search</h2>
+          <label class="field">
+            <span class="field__label">Keyword</span>
+            <input id="searchInput" type="search" placeholder="Kamehameha, Piccolo, control...">
+          </label>
+        </section>
+
+        <section class="panel" id="filtersPanel">
+          <h2>Filters</h2>
+          <div class="field">
+            <span class="field__label">Ability Type</span>
+            <div class="chip-list" id="typeFilters"></div>
+          </div>
+          <div class="field">
+            <span class="field__label">Owner / Group</span>
+            <div class="chip-list" id="ownerFilters"></div>
+          </div>
+          <div class="field">
+            <span class="field__label">Race</span>
+            <div class="chip-list" id="raceFilters"></div>
+          </div>
+          <div class="field">
+            <span class="field__label">Era</span>
+            <div class="chip-list" id="eraFilters"></div>
+          </div>
+          <button id="resetFilters" class="btn-secondary">Reset Filters</button>
+        </section>
+
+        <section class="panel">
+          <h2>Notes</h2>
+          <p class="small muted">
+            Scope is intentionally canon-facing and technique-family collapsed for usability (for example, the Kamehameha family appears as a single ability line in the master catalog). The app structure is designed so we can expand to a more exhaustive dataset later.
+          </p>
+        </section>
+      </aside>
+
+      <section class="content">
+        <div class="panel content-toolbar">
+          <div>
+            <h2 id="viewTitle">All Abilities</h2>
+            <p class="small muted" id="viewSubtitle">Owner-grouped master catalog with game-port notes.</p>
+          </div>
+          <div class="toolbar-right">
+            <span class="pill pill--count" id="resultCount">0 results</span>
+            <button id="groupToggle" class="btn-secondary">Group by Owner: On</button>
+          </div>
+        </div>
+
+        <div id="viewRoot" class="view-root"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js?v=20260222c"></script>
+</body>
+</html>

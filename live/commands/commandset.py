@@ -15,6 +15,10 @@ from commands.db_commands import (
     CmdLogout,
     CmdLogoTest,
     CmdPlayerProfile,
+    CmdQuest,
+    CmdQuests,
+    CmdRacial,
+    CmdRacials,
     CmdScan,
     CmdSense,
     CmdSuppress,
@@ -22,6 +26,11 @@ from commands.db_commands import (
     CmdTrain,
     CmdTransform,
     CmdMap,
+    CmdTechniqueUI,
+    CmdForms,
+    CmdLSSJ,
+    CmdTalk,
+    CmdSpawnTrainer,
 )
 
 
@@ -44,6 +53,15 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdTrain())
         self.add(CmdPlayerProfile())
         self.add(CmdMap())
+        self.add(CmdTechniqueUI())
+        self.add(CmdForms())
+        self.add(CmdRacials())
+        self.add(CmdRacial())
+        self.add(CmdQuests())
+        self.add(CmdQuest())
+        self.add(CmdLSSJ())
+        self.add(CmdTalk())
+        self.add(CmdSpawnTrainer())
         self.add(CmdLogoTest())
         self.add(CmdLogout())
         self.add(CmdHelpDB())

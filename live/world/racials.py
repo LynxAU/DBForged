@@ -6,6 +6,8 @@ Racial traits/passives/actives registry.
 
 from __future__ import annotations
 
+import time
+
 from world.content_core import build_registry, find_by_key_or_name, make_stub_result, summarize_effect
 
 
@@ -37,6 +39,8 @@ def _trait(
     cooldown=0.0,
     prerequisites=None,
 ):
+    # For now, all racials are passive-only (design decision).
+    effective_kind = "passive"
     return (
         key,
         {
@@ -46,18 +50,19 @@ def _trait(
             "description": desc,
             "framework": "RacialTrait",
             "race": race,
-            "kind": kind,  # passive / active / trait
+            "kind": effective_kind,  # passive-only for now
+            "original_kind": kind,
             "category": "racial",
-            "tags": ["racial", kind] + list(tags),
+            "tags": ["racial", effective_kind] + list(tags),
             "resource_costs": {"ki": int(ki_cost)},
             "ki_cost": int(ki_cost),
             "cooldown": float(cooldown),
             "effect": effect,
             "scaling": effect.get("scaling", {}),
-            "target_rules": {"target": "self" if kind != "active" or effect.get("target") == "self" else effect.get("target", "enemy"), "range": effect.get("range", "self")},
+            "target_rules": {"target": "self", "range": effect.get("range", "self")},
             "prerequisites": prerequisites or {"race": race},
             "context_extras": effect.get("hooks", {}),
-            "ui_summary": summarize_effect({"effect": effect, "scaling": effect.get("scaling", {}), "tags": ["racial", kind] + list(tags)}),
+            "ui_summary": summarize_effect({"effect": effect, "scaling": effect.get("scaling", {}), "tags": ["racial", effective_kind] + list(tags)}),
             "ready_state": "integration_ready",
         },
     )
@@ -137,7 +142,117 @@ def ensure_character_racials(character):
     race = _normalize_race(character.db.race)
     traits = [k for k, _ in get_racials_for_race(race)]
     character.db.racial_traits = sorted(traits)
+    character.db.racial_cooldowns = character.db.racial_cooldowns or {}
     return traits
+
+
+def get_character_racial_keys(character):
+    owned = set(character.db.racial_traits or [])
+    if not owned:
+        owned = set(ensure_character_racials(character))
+    return [key for key in sorted(owned) if key in RACIALS]
+
+
+def get_character_racials(character, *, kind=None):
+    results = []
+    for key in get_character_racial_keys(character):
+        data = RACIALS.get(key)
+        if not data:
+            continue
+        if kind and data.get("kind") != kind:
+            continue
+        results.append((key, data))
+    return results
+
+
+def get_racial_hooks(character):
+    """
+    Aggregate passive/trait hooks into one merged dict for systems to consume.
+    Numeric values stack additively. Bool-like values use any(True).
+    """
+    merged = {}
+    for _key, racial in get_character_racials(character):
+        if racial.get("kind") == "active":
+            continue
+        hooks = (((racial.get("effect") or {}).get("hooks")) or {})
+        for hook, value in hooks.items():
+            if isinstance(value, bool):
+                merged[hook] = bool(merged.get(hook)) or value
+            elif isinstance(value, (int, float)):
+                merged[hook] = float(merged.get(hook, 0.0)) + float(value)
+            else:
+                merged[hook] = value
+    return merged
+
+
+def get_racial_hook_value(character, hook, default=0.0):
+    return get_racial_hooks(character).get(hook, default)
+
+
+def _racial_cd_remaining(character, racial_key, now=None):
+    now = time.time() if now is None else float(now)
+    expires = float((character.db.racial_cooldowns or {}).get(racial_key, 0) or 0)
+    return max(0.0, expires - now)
+
+
+def can_use_racial(character, racial_key, now=None):
+    racial = RACIALS.get(racial_key)
+    if not racial:
+        return False, "Unknown racial.", None
+    if racial_key not in set(get_character_racial_keys(character)):
+        return False, "You do not have that racial trait.", racial
+    return False, "Racial traits are passive for now and do not need activation.", racial
+
+
+def use_racial(character, racial_key, target=None, context=None, now=None):
+    now = time.time() if now is None else float(now)
+    ok, msg, racial = can_use_racial(character, racial_key, now=now)
+    if not ok:
+        return False, msg, None
+
+    ki_cost = int(racial.get("ki_cost", 0) or 0)
+    if ki_cost:
+        spend = getattr(character, "spend_ki", None)
+        if callable(spend):
+            if not spend(ki_cost):
+                return False, "Not enough ki.", None
+        else:
+            character.db.ki_current = max(0, (character.db.ki_current or 0) - ki_cost)
+
+    if racial.get("cooldown"):
+        cds = dict(character.db.racial_cooldowns or {})
+        cds[racial_key] = now + float(racial.get("cooldown", 0))
+        character.db.racial_cooldowns = cds
+
+    effect = racial.get("effect") or {}
+    effect_type = effect.get("type")
+    if effect_type == "heal":
+        base_heal = int(effect.get("base_heal", 0) or 0)
+        if base_heal > 0:
+            heal_target = target if target is not None else character
+            if hasattr(heal_target, "db") and hasattr(heal_target.db, "hp_current"):
+                hp_max = heal_target.db.hp_max or heal_target.db.hp_current or base_heal
+                heal_target.db.hp_current = min(hp_max, (heal_target.db.hp_current or 0) + base_heal)
+    elif effect_type in {"buff", "guard", "counter_stance", "debuff", "aoe_debuff", "seal", "movement"}:
+        duration = float(effect.get("duration", 0) or 0)
+        status_target = character if effect.get("target", "self") == "self" else (target or character)
+        if duration > 0 and hasattr(status_target, "add_status"):
+            status_target.add_status(f"racial_{racial_key}", duration, racial=racial_key, effect_type=effect_type)
+    elif effect_type == "resource_drain":
+        hooks = effect.get("hooks", {})
+        ki_siphon = int(hooks.get("ki_siphon", 0) or 0)
+        if ki_siphon > 0 and target and hasattr(target, "db"):
+            drained = min(ki_siphon, int(target.db.ki_current or 0))
+            target.db.ki_current = max(0, int(target.db.ki_current or 0) - drained)
+            if hasattr(character, "restore_ki"):
+                character.restore_ki(drained)
+            else:
+                character.db.ki_current = min(character.db.ki_max or 999999, (character.db.ki_current or 0) + drained)
+
+    result = execute_racial_stub(character, racial_key, target=target, context=context)
+    result["payload"]["ki_cost"] = ki_cost
+    result["payload"]["cooldown"] = racial.get("cooldown", 0)
+    return True, f"You use {racial['name']}.", result
 
 
 def execute_racial_stub(caller, racial_key, target=None, context=None):

@@ -16,6 +16,35 @@ from world.techniques import TECHNIQUES
 DEFAULT_PLACEHOLDER_TRAINER = "combat_instructor_network"
 DEFAULT_PLACEHOLDER_QUEST = "open_world_discovery"
 
+MANUAL_UNLOCK_OVERRIDES = {
+    ("technique", "ki_blast"): {"trainer": "vegeta", "quest": "capsule_fundamentals_range", "type": "quest"},
+    ("technique", "guard"): {"trainer": "vegeta", "quest": "capsule_fundamentals_range", "type": "quest"},
+    ("technique", "finger_beam_burst"): {"trainer": "vegeta", "quest": "capsule_fundamentals_range", "type": "quest"},
+    ("technique", "consecutive_energy_blast"): {"trainer": "android_17", "quest": "arena_efficiency_loop", "type": "quest"},
+    ("technique", "spirit_shot"): {"trainer": "krillin", "quest": "spirit_control_basics", "type": "quest"},
+    ("technique", "barrier"): {"trainer": "android_17", "quest": "ranger_barrier_protocols", "type": "quest"},
+    ("technique", "explosive_wave"): {"trainer": "android_17", "quest": "ranger_barrier_protocols", "type": "quest"},
+    ("technique", "vanish_strike"): {"trainer": "yamcha", "quest": "practical_brawler_drills", "type": "quest"},
+    ("technique", "wolf_fang_fist"): {"trainer": "yamcha", "quest": "desert_wolf_rush", "type": "quest"},
+    ("technique", "meteor_smash"): {"trainer": "yamcha", "quest": "practical_brawler_drills", "type": "quest"},
+    ("technique", "mach_punch_barrage"): {"trainer": "yamcha", "quest": "desert_wolf_rush", "type": "quest"},
+    ("technique", "justice_rush"): {"trainer": "toppo", "quest": "justice_combo_doctrine", "type": "quest"},
+    ("technique", "crusher_knee"): {"trainer": "toppo", "quest": "pride_trooper_formation", "type": "quest"},
+    ("technique", "buster_cannon"): {"trainer": "future_trunks", "quest": "future_ruin_pressure", "type": "quest"},
+    ("technique", "burning_attack"): {"trainer": "future_trunks", "quest": "burning_hand_signs", "type": "quest"},
+    ("technique", "finish_buster"): {"trainer": "future_trunks", "quest": "finish_buster_routing", "type": "quest"},
+    ("technique", "big_bang_kamehameha"): {"trainer": "gogeta", "quest": "fusion_finisher_discipline", "type": "quest"},
+    ("technique", "super_kamehameha"): {"trainer": "master_roshi", "quest": "turtle_advanced_beam_doctrine", "type": "quest"},
+    ("technique", "final_flash"): {"trainer": "vegeta", "quest": "saiyan_heavy_finishers", "type": "quest"},
+    ("technique", "tail_sweep"): {"trainer": "vegeta", "quest": "saiyan_heavy_finishers", "type": "quest"},
+    ("technique", "regeneration_focus"): {"trainer": "piccolo", "quest": "lookout_shielding_practice", "type": "quest"},
+    ("technique", "wild_sense"): {"trainer": "gohan", "quest": "hybrid_composure_drills", "type": "quest"},
+    ("transformation", "max_power"): {"trainer": "master_roshi", "quest": "max_power_body_control", "type": "quest"},
+    ("transformation", "super_saiyan_grade3"): {"trainer": "vegeta", "quest": "saiyan_heavy_finishers", "type": "quest"},
+    ("transformation", "super_saiyan_3"): {"trainer": "goku", "quest": "ssj3_sustain_trial", "type": "quest"},
+    ("transformation", "bioarmor_carapace"): {"trainer": "cell_shade", "quest": "biodroid_carapace_protocol", "type": "quest"},
+}
+
 
 def _base_entry(kind, key, name):
     return {
@@ -113,6 +142,12 @@ def build_unlock_registry():
     registry = _seed_registry()
     _apply_trainer_rewards(registry)
     _apply_quest_rewards(registry)
+    for key, override in MANUAL_UNLOCK_OVERRIDES.items():
+        if key in registry:
+            src = registry[key]["unlock_source"]
+            src.update(override)
+            if src.get("notes", "").startswith("Placeholder mapping"):
+                src["notes"] = "Explicit trainer/quest content mapping."
     return registry
 
 
@@ -172,4 +207,8 @@ def validate_unlock_coverage():
     for key in RACIALS:
         if ("racial", key) not in UNLOCK_REGISTRY:
             errors.append(f"Missing racial unlock mapping: {key}")
+    for (kind, key), entry in UNLOCK_REGISTRY.items():
+        src = entry["unlock_source"]
+        if src.get("trainer") == DEFAULT_PLACEHOLDER_TRAINER or src.get("quest") == DEFAULT_PLACEHOLDER_QUEST:
+            errors.append(f"Placeholder unlock mapping remains: {kind}.{key}")
     return errors

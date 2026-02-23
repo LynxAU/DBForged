@@ -18,7 +18,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["turtle_school_fundamentals", "kami_sealing_trials"],
         "trainer_rewards": {
-            "techniques": ["kame_wave", "super_kamehameha", "evil_containment_wave", "solar_flare", "max_power"],
+            "techniques": ["kame_wave", "super_kamehameha", "evil_containment_wave", "solar_flare"],
             "forms": ["max_power"],
         },
     },
@@ -114,7 +114,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["snake_way_endurance", "kaioken_stability_trials"],
         "trainer_rewards": {
-            "techniques": ["kaioken"],
+            "techniques": [],
             "forms": ["kaioken"],
         },
     },
@@ -130,7 +130,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["elder_kai_ritual", "sacred_world_attunement", "kai_guardian_vow"],
         "trainer_rewards": {
-            "techniques": ["potential_unleashed_focus", "telekinesis_hold", "kai_blessing_seal"],
+            "techniques": ["telekinesis_hold"],
             "forms": ["potential_unleashed", "kai_unsealed", "godly_empowerment"],
         },
     },
@@ -178,7 +178,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["evolution_catalyst_alpha", "evolution_catalyst_omega", "zenkai_evolution_event"],
         "trainer_rewards": {
-            "techniques": ["omega_blaster", "spirit_breaking_fist", "biodroid_genetic_siphon"],
+            "techniques": ["omega_blaster", "spirit_breaking_fist"],
             "forms": ["biodroid_stage_two", "biodroid_perfect", "super_perfect_biodroid", "bioarmor_carapace"],
         },
     },
@@ -194,7 +194,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["broly_lineage_echoes", "legendary_control_protocol", "legendary_rage_forge"],
         "trainer_rewards": {
-            "techniques": ["eraser_cannon", "legendary_surge"],
+            "techniques": ["eraser_cannon"],
             "forms": ["legendary_super_saiyan"],
         },
     },
@@ -210,7 +210,7 @@ NPC_DEFINITIONS = {
         ],
         "questlines": ["tuffle_mech_sync", "parasite_protocols", "tactical_probe_network"],
         "trainer_rewards": {
-            "techniques": ["truffle_probe_swarm", "gravity_bind"],
+            "techniques": ["gravity_bind"],
             "forms": ["truffle_machine_merge", "truffle_parasite_overdrive"],
         },
     },
@@ -228,6 +228,102 @@ NPC_DEFINITIONS = {
         "trainer_rewards": {
             "techniques": ["psychic_burst", "gravity_bind"],
             "forms": ["meditative_limit", "grey_limit_break"],
+        },
+    },
+    "yamcha": {
+        "name": "Yamcha",
+        "role": "trainer",
+        "bio": "A desert bandit turned veteran Z Fighter, Yamcha teaches practical rushdowns, movement feints, and pressure survival.",
+        "location_hint": "Desert training field / tournament practice ring",
+        "signature_moves": ["Wolf Fang Fist", "Spirit Ball (future content)", "Feint-heavy rush combat"],
+        "dialogue": [
+            "You don't need the biggest blast if your footwork wins the exchange.",
+            "Rush clean, exit clean. Don't feed counters.",
+        ],
+        "questlines": ["desert_wolf_rush", "practical_brawler_drills"],
+        "trainer_rewards": {
+            "techniques": ["wolf_fang_fist", "mach_punch_barrage", "feint_step"],
+            "forms": [],
+        },
+    },
+    "future_trunks": {
+        "name": "Future Trunks",
+        "role": "trainer",
+        "bio": "A hardened future warrior who teaches disciplined pressure beams and efficient finisher routing under real battlefield conditions.",
+        "location_hint": "Capsule Corp simulation yard / future ruin simulation",
+        "signature_moves": ["Burning Attack", "Finish Buster", "Buster Cannon"],
+        "dialogue": [
+            "Waste no motion. End the fight before the battlefield punishes you.",
+            "Precision under pressure is what keeps everyone alive.",
+        ],
+        "questlines": ["future_ruin_pressure", "burning_hand_signs", "finish_buster_routing"],
+        "trainer_rewards": {
+            "techniques": ["burning_attack", "finish_buster", "buster_cannon"],
+            "forms": [],
+        },
+    },
+    "gohan": {
+        "name": "Son Gohan",
+        "role": "trainer",
+        "bio": "A scholar-warrior who trains hybrid potential, controlled surges, and intelligent battlefield adaptation.",
+        "location_hint": "Orange Star training annex / wilderness sparring field",
+        "signature_moves": ["Masenko", "Potential Unleashed", "Beast (advanced)"],
+        "dialogue": [
+            "Power spikes are useless if your fundamentals collapse.",
+            "Stay calm, read the field, then commit.",
+        ],
+        "questlines": ["hybrid_composure_drills", "beast_edge_focus"],
+        "trainer_rewards": {
+            "techniques": ["wild_sense", "consecutive_energy_blast", "justice_rush"],
+            "forms": ["beast"],
+        },
+    },
+    "android_17": {
+        "name": "Android 17",
+        "role": "trainer",
+        "bio": "A ruthless efficiency fighter who teaches barrier timing, spacing, and sustained pressure with minimal waste.",
+        "location_hint": "Wildlife preserve combat range / Tournament arena sim",
+        "signature_moves": ["Barrier", "Explosive Wave", "Efficient sustained combat"],
+        "dialogue": [
+            "Win on efficiency. Let your opponent waste the extra energy.",
+            "A barrier is timing, not panic.",
+        ],
+        "questlines": ["ranger_barrier_protocols", "arena_efficiency_loop"],
+        "trainer_rewards": {
+            "techniques": ["barrier", "explosive_wave", "consecutive_energy_blast"],
+            "forms": [],
+        },
+    },
+    "gogeta": {
+        "name": "Gogeta",
+        "role": "trainer",
+        "bio": "A fusion warrior who represents the apex of decisive finisher routes and overwhelming beam conversion.",
+        "location_hint": "Fusion training chamber / movie-era battle simulation",
+        "signature_moves": ["Big Bang Kamehameha", "Soul Punisher (future content)"],
+        "dialogue": [
+            "Fusion power means nothing if your timing is sloppy.",
+            "Build the opening, then finish cleanly.",
+        ],
+        "questlines": ["fusion_finisher_discipline"],
+        "trainer_rewards": {
+            "techniques": ["big_bang_kamehameha"],
+            "forms": [],
+        },
+    },
+    "toppo": {
+        "name": "Toppo",
+        "role": "trainer",
+        "bio": "A Pride Trooper captain who teaches discipline, justice-themed pressure chains, and control under tournament rules.",
+        "location_hint": "Pride Trooper simulation arena",
+        "signature_moves": ["Justice Rush", "pressure grapples", "heroic suppression"],
+        "dialogue": [
+            "Justice is discipline under pressure, not loud speeches.",
+            "Command the pace and your enemy will break first.",
+        ],
+        "questlines": ["pride_trooper_formation", "justice_combo_doctrine"],
+        "trainer_rewards": {
+            "techniques": ["justice_rush", "crusher_knee"],
+            "forms": [],
         },
     },
 }
