@@ -180,20 +180,36 @@
       if (!demoState.activeScene) {
         demoState.activeScene = true;
         if (demoState.canvas) {
-          demoState.canvas.style.height = "240px";
+          demoState.canvas.style.height = "512px"; // Increased height for 2D view
           setTimeout(resizeCanvas, 10);
         }
       }
       const entity = packet.entity;
       const prev = demoState.entities.get(entity.id) || {};
-      demoState.entities.set(entity.id, { ...prev, ...entity, _seenAt: performance.now() });
+
+      // Store current as target for lerping
+      const state = {
+        ...prev,
+        ...entity,
+        _seenAt: performance.now(),
+        // For lerp: start from previous visually rendered position if exists
+        _visualX: prev._visualX ?? (entity.position?.x ?? 0),
+        _visualY: prev._visualY ?? (entity.position?.y ?? 0)
+      };
+      demoState.entities.set(entity.id, state);
 
       const player = getEntityPlayer(entity.id);
       if (player) {
-        // Movement state is inferred from position changes; server currently sends stub positions.
         const moved = prev.position && entity.position &&
           (prev.position.x !== entity.position.x || prev.position.y !== entity.position.y);
         player.applyState(moved ? "moving" : "idle");
+      }
+      return;
+    }
+
+    if (packet.type === "map_data") {
+      if (window.DBForgedTileSystem) {
+        window.DBForgedTileSystem.updateFromMapData(packet);
       }
       return;
     }
@@ -248,14 +264,21 @@
     setStatus("Watching @event packets in message window.");
   }
 
-  function layoutEntity(entity, index, count, canvasW, canvasH) {
-    // Server currently sends stub positions. Spread entities along a stage line.
-    const stageY = Math.floor(canvasH * 0.82);
-    const left = Math.floor(canvasW * 0.10);
-    const right = Math.floor(canvasW * 0.90);
-    const slot = count <= 1 ? 0.5 : index / Math.max(1, count - 1);
-    const x = Math.floor(left + (right - left) * slot);
-    return { x, y: stageY };
+  function layoutEntity(entity, canvasW, canvasH) {
+    if (!window.DBForgedTileSystem) return { x: 0, y: 0 };
+
+    const ts = window.DBForgedTileSystem;
+    const TILE_SIZE = 32;
+
+    // Calculate position relative to tile system center
+    // We use the lerped visual coordinates
+    const vx = entity._visualX ?? (entity.position?.x ?? 0);
+    const vy = entity._visualY ?? (entity.position?.y ?? 0);
+
+    const drawX = (vx - ts.centerX + ts.viewRadius) * TILE_SIZE + TILE_SIZE / 2;
+    const drawY = (ts.centerY + ts.viewRadius - vy) * TILE_SIZE + TILE_SIZE; // Feet at bottom of tile
+
+    return { x: drawX, y: drawY };
   }
 
   function drawBackground(ctx, w, h) {
@@ -264,7 +287,7 @@
       window.DBForgedTileSystem.render(ctx, demoState.currentRoom, 0, 0, w, h);
       return;
     }
-    
+
     // Fallback: gradient background
     const g = ctx.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, "#0a1324");
@@ -272,14 +295,6 @@
     g.addColorStop(1, "#2f4f6f");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-
-    // Ground strip
-    const groundY = Math.floor(h * 0.82);
-    const gg = ctx.createLinearGradient(0, groundY, 0, h);
-    gg.addColorStop(0, "#56794f");
-    gg.addColorStop(1, "#2f4a2b");
-    ctx.fillStyle = gg;
-    ctx.fillRect(0, groundY, w, h - groundY);
   }
 
   function drawEntityFallback(ctx, entity, x, feetY) {
@@ -334,26 +349,39 @@
       return;
     }
 
+    // Lerp positions for all entities
+    const LERP_SPEED = 5.0; // Adjust for smoothness
+    demoState.entities.forEach(entity => {
+      const tx = entity.position?.x ?? 0;
+      const ty = entity.position?.y ?? 0;
+      entity._visualX = (entity._visualX ?? tx) + (tx - (entity._visualX ?? tx)) * Math.min(1, dt * LERP_SPEED);
+      entity._visualY = (entity._visualY ?? ty) + (ty - (entity._visualY ?? ty)) * Math.min(1, dt * LERP_SPEED);
+    });
+
     ctx.clearRect(0, 0, w, h);
     drawBackground(ctx, w, h);
 
-    const entities = [...demoState.entities.values()]
-      .filter((e) => e && e.room_name) // only roomed entities
-      .sort((a, b) => Number(a.id) - Number(b.id));
+    // Filter, calculate positions, and SORT by Y for depth
+    const renderList = [...demoState.entities.values()]
+      .filter((e) => e && e.room_name)
+      .map(entity => ({
+        entity,
+        pt: layoutEntity(entity, w, h)
+      }))
+      .sort((a, b) => a.pt.y - b.pt.y); // Y-axis depth sorting
 
-    entities.forEach((entity, idx) => {
-      const pt = layoutEntity(entity, idx, entities.length, w, h);
+    renderList.forEach(({ entity, pt }) => {
       const player = getEntityPlayer(entity.id);
       if (player) {
         player.update(dt);
-        player.render(ctx, pt.x, pt.y, { scale: 1 });
+        player.render(ctx, pt.x, pt.y, { scale: 1.5 });
         // Nameplate
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(pt.x - 42, pt.y - 52, 84, 14);
-        ctx.fillStyle = "#dfeaff";
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(pt.x - 50, pt.y - 75, 100, 16);
+        ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.font = "11px monospace";
-        ctx.fillText(`${entity.name} PL:${entity.displayed_pl ?? entity.pl ?? "?"}`, pt.x, pt.y - 41);
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText(`${entity.name} (${entity.displayed_pl ?? "?"})`, pt.x, pt.y - 63);
       } else {
         drawEntityFallback(ctx, entity, pt.x, pt.y);
       }

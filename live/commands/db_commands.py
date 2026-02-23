@@ -1172,6 +1172,8 @@ class CmdHelpDB(Command):
             "map\n"
             "logo_test\n"
             "helpdb\n"
+            "teleport <x> <y> [z]\n"
+            "n/s/e/w/u/d (spatial grid movement)\n"
             "\nNotes: Combat has passive 1s ticks. Beams can collide into beam struggles if exchanged quickly."
         )
 
@@ -1186,92 +1188,34 @@ class CmdMap(Command):
 
     def func(self):
         caller = self.caller
+        
+        # Scouting support: map <x> <y>
+        args = self.args.strip().split()
+        if len(args) >= 2:
+            try:
+                scout_x = int(args[0])
+                scout_y = int(args[1])
+                from world.map_utils import render_map
+                map_str = render_map(scout_x, scout_y, radius=5, target_obj=caller)
+                caller.msg(f"|y[|c Scout View: {scout_x}, {scout_y} |y]|n\n" + map_str)
+                return
+            except ValueError:
+                pass
+
         loc = caller.location
         if not loc:
             caller.msg("You are nowhere.")
             return
 
-        if "Kame Island" in loc.tags.get(category="zone", return_list=True) or "Kame Island" in loc.key:
-            self._render_kame_map(loc)
-        else:
-            caller.msg("No map is available for your current area.")
-
-    def _render_kame_map(self, loc):
-        is_indoor = "Kame House" in loc.key
-
-        base_indoor = """
-==============================================================================
-                               |y[|c KAME HOUSE |y]|n 
-
-               |x+---------------------+|n                                |x+---------------------+|n
-               |x||n       |cKITCHEN|n       |x||n                                |x||n      |cUPSTAIRS|n       |x||n
-               |x||n         {k}         |x||n                                |x||n       |cBEDROOM|n       |x||n
-               |x||n                     |x||n                                |x||n         {b}         |x||n
-               |x+---------+   +---------+|n                                |x||n                     |x||n
-                         |   |                                          |x+---------------------+|n
-  |x+------------+|n         |   |
-  |x||n  |cBATHROOM|n  |x+---------+   +---------+|n
-  |x||n    {a}           |cLIVING ROOM|n     |x||n
-  |x||n                      {l}         |x||n
-  |x+------------+|x+---------+   +---------+|n
-                         |   |
-               |x+---------+   +---------+|n
-               |x||n        |cPORCH|n        |x||n
-               |x||n         {p}         |x||n
-               |x+-----------------------+|n
-
-==============================================================================
-"""
-
-        base_outdoor = """
-==============================================================================
-                               |y[|c KAME ISLAND |y]|n                                
-
-         |B≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈|n           
-      |B≈  ≈  ≈  ≈  ≈  ≈|n  |y.  .  .  .  .  .  .  .  .  .|n  |B≈  ≈  ≈  ≈  ≈  ≈|n       
-   |B≈  ≈  ≈  ≈|n  |y.  .  . {n} .  .  .  . {N} .  .  .  .  . |n|B≈  ≈  ≈  ≈|n       
-      |B≈  ≈|n  |y.  .  .  |G,  .  ,  .  ,  .  ,  .  ,  .  ,  .|y  .  .  .|n|B≈  ≈|n          
-   |B≈  ≈|n  |y.  .  .  . |G.  ,  .  |W+-------+|G  .  ,  .  ,  .  , |y .  .  .|n |B≈  ≈|n       
-|B≈ {w} ≈|n |y. {W} |n|G ,  .  ,  . |RKAME   |W||G  .  ,  .  ,  .  ,  |y. {E} .|n|B≈ {e} ≈|n
-   |B≈  ≈|n  |y.  .  .  . |G.  ,  .  |W| HOUSE ||G  .  ,  .   |g\\|G   , |y .  .  .|n |B≈  ≈|n       
-      |B≈  ≈|n  |y.  .  .  |G,  .  ,  |W+- |w{p}|W -+|G  .  ,  . |g(`)|G .|y  .  .  .|n  |B≈  ≈|n          
-   |B≈  ≈  ≈  ≈|n  |y.  .  .  .  .  .  . {S} .  .  .  .  .  .  .|n  |B≈  ≈  ≈  ≈|n       
-      |B≈  ≈  ≈  ≈  ≈  ≈|n  |y.  .  .  .  .  .  .  .  .  .|n  |B≈  ≈  ≈  ≈  ≈  ≈|n       
-         |B≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈ {s} ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈|n           
-
-==============================================================================
-"""
-
-        n = {k: "|Y(O)|n" for k in [
-            "n", "s", "e", "w", 
-            "N", "S", "E", "W", 
-            "p", "k", "a", "l", "b"
-        ]}
+        coords = getattr(caller.db, "coords", (0, 0, 0))
+        from world.map_utils import render_map
+        map_str = render_map(coords[0], coords[1], radius=7, target_obj=caller)
         
-        curr = loc.key
-        marker = "|r(@)|n"
-        
-        if "Ocean" in curr:
-            desc = loc.db.desc.lower() if loc.db.desc else ""
-            if "sits to the north" in desc: n["s"] = marker
-            elif "sits to the south" in desc: n["n"] = marker
-            elif "sits to the west" in desc: n["e"] = marker
-            elif "sits to the east" in desc: n["w"] = marker
-            else: n["n"] = marker
-        elif "North" in curr or "Rear" in curr: n["N"] = marker
-        elif "South" in curr: n["S"] = marker
-        elif "East" in curr: n["E"] = marker
-        elif "West" in curr: n["W"] = marker
-        elif "Kitchen" in curr: n["k"] = marker
-        elif "Bathroom" in curr: n["a"] = marker
-        elif "Living" in curr: n["l"] = marker
-        elif "Porch" in curr: n["p"] = marker
-        elif "Bedroom" in curr: n["b"] = marker
-
-        if is_indoor:
-            self.caller.msg(base_indoor.format(**n).strip("\n"))
-        else:
-            self.caller.msg(base_outdoor.format(**n).strip("\n"))
+        zone_name = "Unknown Area"
+        if loc.tags.get(category="zone"):
+            zone_name = loc.tags.get(category="zone")
+            
+        caller.msg(f"|y[|c {zone_name} |y]|n |w({coords[0]}, {coords[1]})|n\n" + map_str)
 
 
 class CmdLogoTest(Command):
@@ -1337,3 +1281,125 @@ class CmdLogout(Command):
             account._db_menu_send(session=session)
         else:
             account.msg(account.at_look(target=account.characters, session=session), session=session)
+
+
+class CmdGridMove(Command):
+    """
+    Move in a cardinal direction on the spatial grid.
+    """
+
+    key = "north"
+    aliases = ["south", "east", "west", "up", "down", "n", "s", "e", "w", "u", "d"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        direction = self.cmdstring.lower()
+        # Mapping for vectors
+        vectors = {
+            "north": (0, 1, 0),
+            "n": (0, 1, 0),
+            "south": (0, -1, 0),
+            "s": (0, -1, 0),
+            "east": (1, 0, 0),
+            "e": (1, 0, 0),
+            "west": (-1, 0, 0),
+            "w": (-1, 0, 0),
+            "up": (0, 0, 1),
+            "u": (0, 0, 1),
+            "down": (0, 0, -1),
+            "d": (0, 0, -1),
+        }
+
+        vector = vectors.get(direction)
+        if not vector:
+            caller.msg("Invalid direction.")
+            return
+
+        # Get current coords
+        curr_coords = getattr(caller.db, "coords", (0, 0, 0))
+        new_coords = (
+            curr_coords[0] + vector[0],
+            curr_coords[1] + vector[1],
+            curr_coords[2] + vector[2],
+        )
+
+        # Task 7: Bounds checking (arbitrary for now, e.g. -500 to 500)
+        MAP_LIMIT = 500
+        if any(abs(c) > MAP_LIMIT for c in new_coords):
+            caller.msg("You cannot move any further in that direction.")
+            return
+
+        # Task 6: Find target room
+        from world.map_utils import get_room_at
+
+        target_room = get_room_at(*new_coords)
+
+        if target_room:
+            # If we were in a room but the new coords point to another room, move.
+            if caller.location != target_room:
+                caller.move_to(target_room)
+            caller.db.coords = new_coords
+            # caller.msg(f"You move {direction} to {new_coords}.")
+            # Evennia's at_post_move will handle the 'look' typically.
+        else:
+            # In this coordinate-based world, if no room exists, we block movement.
+            caller.msg(f"There is nothing in that direction ({new_coords}).")
+
+
+class CmdTeleport(Command):
+    """
+    Jump to specific coordinates.
+    Usage: teleport <x> <y> [z]
+    """
+
+    key = "teleport"
+    aliases = ["tpl"]
+    locks = "cmd:perm(Builders)"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        if not self.args:
+            caller.msg("Usage: teleport <x> <y> [z]")
+            return
+
+        args = self.args.strip().split()
+        try:
+            x = int(args[0])
+            y = int(args[1])
+            z = int(args[2]) if len(args) > 2 else 0
+        except (ValueError, IndexError):
+            caller.msg("Coordinates must be integers.")
+            return
+
+        from world.map_utils import get_room_at
+
+        target_room = get_room_at(x, y, z)
+        if target_room:
+            caller.move_to(target_room)
+            caller.db.coords = (x, y, z)
+            caller.msg(f"Teleported to ({x}, {y}, {z}).")
+        else:
+            caller.msg(f"No GridRoom exists at ({x}, {y}, {z}).")
+
+
+class CmdNPCStress(Command):
+    key = "+npcstress"
+    locks = "cmd:id(1) or perm(Admin)"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        try:
+            count = int(self.args.strip()) if self.args else 10
+        except ValueError:
+            count = 10
+
+        from typeclasses.npcs import create_test_npc
+        for i in range(count):
+            npc = create_test_npc(caller.location, template_key="test_even", name=f"StressBot_0{i}")
+            npc.db.test_ai = "stress_move"
+            npc.db.attack_interval = 0.5
+        caller.msg(f"Spawned {count} stress test bots.")

@@ -102,6 +102,7 @@ class Character(ObjectParent, DefaultCharacter):
         self.db.equipped_techniques = self.db.equipped_techniques or list(STARTER_TECHNIQUES[:4])
         self.db.racial_traits = self.db.racial_traits or []
         self.db.lssj_state = self.db.lssj_state or {}
+        self.db.coords = self.db.coords or (0, 0, 0)
         ensure_character_racials(self)
 
     def at_post_puppet(self, **kwargs):

@@ -55,8 +55,40 @@ SETTINGS_DOTPATH = "server.conf.settings"
 CURRENT_DIR = os.getcwd()
 GAMEDIR = CURRENT_DIR
 
+
+def get_servername_from_settings():
+    """
+    Try to read SERVERNAME from game settings without requiring Django.
+    This provides a fallback when Django settings aren't initialized yet.
+
+    Returns:
+        str: SERVERNAME if found, otherwise None.
+    """
+    import re
+
+    settings_file = os.path.join(GAMEDIR, SETTINGS_PATH)
+    secret_settings_file = os.path.join(GAMEDIR, CONFDIR, "secret_settings.py")
+
+    # Files to check in order (secret_settings.py first since it overrides)
+    files_to_check = [secret_settings_file, settings_file]
+
+    for filepath in files_to_check:
+        if os.path.isfile(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    # Look for SERVERNAME = "..." or SERVERNAME = '...'
+                    match = re.search(r'SERVERNAME\s*=\s*["\']([^"\']+)["\']', content)
+                    if match:
+                        return match.group(1)
+            except Exception:
+                pass
+    return None
+
+
 # Operational setup
 
+SERVERNAME_DISPLAY = None  # Cached servername for display purposes
 SERVER_LOGFILE = None
 PORTAL_LOGFILE = None
 HTTP_LOGFILE = None
@@ -1997,11 +2029,21 @@ def run_menu():
     This launches an interactive menu.
 
     """
+    global SERVERNAME_DISPLAY
+
+    # Try to get servername from settings, fall back to gamedir
+    if SERVERNAME_DISPLAY is None:
+        servername = get_servername_from_settings()
+        if servername:
+            SERVERNAME_DISPLAY = servername
+        else:
+            SERVERNAME_DISPLAY = os.path.basename(GAMEDIR)
+
     while True:
-        # menu loop
-        gamedir = "/{}".format(os.path.basename(GAMEDIR))
-        leninfo = len(gamedir)
-        line = "|" + " " * (61 - leninfo) + gamedir + " " * 2 + "|"
+        # menu loop - show configured SERVERNAME instead of gamedir
+        gameinfo = "/{}".format(SERVERNAME_DISPLAY)
+        leninfo = len(gameinfo)
+        line = "|" + " " * (61 - leninfo) + gameinfo + " " * 2 + "|"
 
         print(MENU.format(gameinfo=line))
         inp = input(" option > ")

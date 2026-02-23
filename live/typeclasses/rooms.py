@@ -39,3 +39,15 @@ class Room(ObjectParent, DefaultRoom):
 
         exit_names = [f"|c{_get_dir(ex)}|n" for ex in exits]
         return f"|WObvious Exits:|n {', '.join(exit_names)}"
+
+
+class GridRoom(Room):
+    """
+    A room that supports coordinate tracking and terrain types.
+    """
+    def at_object_creation(self):
+        super().at_object_creation()
+        # Default spatial coordinates within the room's grid (if applicable)
+        # or the room's absolute world coordinates.
+        self.db.coords = (0, 0, 0)
+        self.db.terrain = "plain"
