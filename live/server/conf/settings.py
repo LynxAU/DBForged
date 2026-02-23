@@ -39,13 +39,8 @@ SERVERNAME = os.environ.get("DBFORGED_SERVERNAME", "live")
 DBFORGED_VERSION = "0.1"
 DBFORGED_EMIT_CLIENT_EVENTS = False
 
-# Port configuration - use 5143+ range for testing (different from Codex 5143-5149)
-TELNET_PORTS = [5153]
-WEBSERVER_PORTS = [(5154, 5158)]
-WEBSOCKET_CLIENT_PORT = 5155
-SSL_PORTS = [5156]
-SSH_PORTS = [5157]
-AMP_PORT = 5159
+# Port configuration is local-instance specific.
+# Keep repo defaults in main; use secret_settings.py for per-agent port overrides.
 
 # Use game-local cmdsets so DBForged commands mount correctly.
 CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"
@@ -67,15 +62,6 @@ GLOBAL_SCRIPTS = {
         "start_delay": True,
     }
 }
-
-# Test-instance port overrides (randomized free block for this session)
-TELNET_PORTS = [5143]
-WEBSERVER_PORTS = [(5144, 5148)]  # (proxy, django)
-WEBSOCKET_CLIENT_PORT = 5145
-SSL_PORTS = [5146]
-SSH_PORTS = [5147]
-AMP_PORT = 5149
-
 
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
