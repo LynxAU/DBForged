@@ -6,396 +6,396 @@
 <script type="text/javascript" src="{% static 'webclient/js/tile_system.js' %}"></script>
 <script type="text/javascript" src="{% static 'webclient/js/dbforged_canvas_demo.js' %}"></script>
 <script type="text/javascript">
-(function () {
-  "use strict";
+  (function () {
+    "use strict";
 
-  try {
-    document.title = "DBForgedGemini";
-  } catch (_err) {}
+    try {
+      document.title = "DBForged";
+    } catch (_err) { }
 
-  var WELCOME_MARKERS = [
-    "welcome to",
-    "version",
-    "team tartarus",
-    "connect <username>",
-    "create <username>",
-  ];
+    var WELCOME_MARKERS = [
+      "welcome to",
+      "version",
+      "team tartarus",
+      "connect <username>",
+      "create <username>",
+    ];
 
-  function htmlToText(html) {
-    var tmp = document.createElement("div");
-    tmp.innerHTML = html || "";
-    return (tmp.textContent || tmp.innerText || "").trim();
-  }
-
-  function safeJsonParse(text) {
-    try { return JSON.parse(text); } catch (_err) { return null; }
-  }
-
-  function ensureScouterHud() {
-    if (document.getElementById("dbforged-scouter-hud")) {
-      return document.getElementById("dbforged-scouter-hud");
+    function htmlToText(html) {
+      var tmp = document.createElement("div");
+      tmp.innerHTML = html || "";
+      return (tmp.textContent || tmp.innerText || "").trim();
     }
 
-    var host = document.querySelector("#main-sub") || document.querySelector("#main") || document.body;
-    if (!host) return null;
-    if (host !== document.body && getComputedStyle(host).position === "static") {
-      host.style.position = "relative";
+    function safeJsonParse(text) {
+      try { return JSON.parse(text); } catch (_err) { return null; }
     }
 
-    var hud = document.createElement("div");
-    hud.id = "dbforged-scouter-hud";
-    hud.style.cssText = [
-      "position:absolute",
-      "top:8px",
-      "right:8px",
-      "z-index:30",
-      "pointer-events:none",
-      "width:min(320px, calc(100% - 16px))",
-      "background:linear-gradient(180deg, rgba(6,18,10,0.92), rgba(4,10,6,0.94))",
-      "border:1px solid rgba(90,255,120,0.35)",
-      "box-shadow:0 0 0 1px rgba(0,0,0,0.55) inset, 0 6px 18px rgba(0,0,0,0.45)",
-      "color:#caffd5",
-      "font:12px/1.25 Consolas, 'Courier New', monospace",
-      "padding:8px 10px",
-      "border-radius:6px",
-      "display:none"
-    ].join(";");
+    function ensureScouterHud() {
+      if (document.getElementById("dbforged-scouter-hud")) {
+        return document.getElementById("dbforged-scouter-hud");
+      }
 
-    hud.innerHTML = [
-      "<div style='display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;'>",
-      "  <div id='dbf-hud-name' style='font-weight:bold;color:#e8fff0;'>SCOUTER</div>",
-      "  <div id='dbf-hud-pl' style='color:#98ffb0;'>PL: --</div>",
-      "</div>",
-      "<div style='margin:4px 0;'>",
-      "  <div style='display:flex;justify-content:space-between;gap:8px;'><span>HP</span><span id='dbf-hud-hp-text'>--/--</span></div>",
-      "  <div style='height:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;'>",
-      "    <div id='dbf-hud-hp-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#38ff7a,#8bff9c);'></div>",
-      "  </div>",
-      "</div>",
-      "<div style='margin:4px 0 0;'>",
-      "  <div style='display:flex;justify-content:space-between;gap:8px;'><span>KI</span><span id='dbf-hud-ki-text'>--/--</span></div>",
-      "  <div style='height:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;'>",
-      "    <div id='dbf-hud-ki-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#47c8ff,#86f2ff);'></div>",
-      "  </div>",
-      "</div>"
-    ].join("");
+      var host = document.querySelector("#main-sub") || document.querySelector("#main") || document.body;
+      if (!host) return null;
+      if (host !== document.body && getComputedStyle(host).position === "static") {
+        host.style.position = "relative";
+      }
 
-    host.appendChild(hud);
-    return hud;
-  }
+      var hud = document.createElement("div");
+      hud.id = "dbforged-scouter-hud";
+      hud.style.cssText = [
+        "position:absolute",
+        "top:8px",
+        "right:8px",
+        "z-index:30",
+        "pointer-events:none",
+        "width:min(320px, calc(100% - 16px))",
+        "background:linear-gradient(180deg, rgba(6,18,10,0.92), rgba(4,10,6,0.94))",
+        "border:1px solid rgba(90,255,120,0.35)",
+        "box-shadow:0 0 0 1px rgba(0,0,0,0.55) inset, 0 6px 18px rgba(0,0,0,0.45)",
+        "color:#caffd5",
+        "font:12px/1.25 Consolas, 'Courier New', monospace",
+        "padding:8px 10px",
+        "border-radius:6px",
+        "display:none"
+      ].join(";");
 
-  function ensurePlayerPanel() {
-    if (document.getElementById("dbforged-player-panel")) {
-      return document.getElementById("dbforged-player-panel");
-    }
-
-    var host = document.querySelector("#main-sub") || document.querySelector("#main") || document.body;
-    if (!host) return null;
-    if (host !== document.body && getComputedStyle(host).position === "static") {
-      host.style.position = "relative";
-    }
-
-    var panel = document.createElement("div");
-    panel.id = "dbforged-player-panel";
-    panel.style.cssText = [
-      "position:absolute",
-      "top:8px",
-      "left:8px",
-      "z-index:30",
-      "pointer-events:none",
-      "width:min(340px, calc(100% - 16px))",
-      "background:linear-gradient(180deg, rgba(18,12,6,0.92), rgba(10,7,4,0.94))",
-      "border:1px solid rgba(255,190,90,0.28)",
-      "box-shadow:0 0 0 1px rgba(0,0,0,0.55) inset, 0 6px 18px rgba(0,0,0,0.45)",
-      "color:#ffe6bd",
-      "font:12px/1.3 Consolas, 'Courier New', monospace",
-      "padding:8px 10px",
-      "border-radius:6px",
-      "display:none"
-    ].join(";");
-
-    panel.innerHTML = [
-      "<div style='font-weight:bold;color:#fff0d2;margin-bottom:6px;'>PLAYER</div>",
-      "<div id='dbf-player-panel-lines' style='display:grid;grid-template-columns:auto 1fr;gap:2px 8px;'></div>"
-    ].join("");
-
-    host.appendChild(panel);
-    return panel;
-  }
-
-  function pct(cur, max) {
-    var c = Number(cur || 0);
-    var m = Math.max(1, Number(max || 1));
-    return Math.max(0, Math.min(100, (c / m) * 100));
-  }
-
-  function updateScouterHud(entity) {
-    if (!entity) return;
-    var hud = ensureScouterHud();
-    if (!hud) return;
-
-    var nameEl = document.getElementById("dbf-hud-name");
-    var plEl = document.getElementById("dbf-hud-pl");
-    var hpText = document.getElementById("dbf-hud-hp-text");
-    var hpBar = document.getElementById("dbf-hud-hp-bar");
-    var kiText = document.getElementById("dbf-hud-ki-text");
-    var kiBar = document.getElementById("dbf-hud-ki-bar");
-
-    if (nameEl) nameEl.textContent = (entity.name || "Player") + " SCOUTER";
-    if (plEl) plEl.textContent = "PL: " + String(entity.displayed_pl ?? entity.pl ?? "--");
-    if (hpText) hpText.textContent = String(entity.hp ?? 0) + "/" + String(entity.hp_max ?? 0);
-    if (kiText) kiText.textContent = String(entity.ki ?? 0) + "/" + String(entity.ki_max ?? 0);
-    if (hpBar) hpBar.style.width = pct(entity.hp, entity.hp_max).toFixed(1) + "%";
-    if (kiBar) kiBar.style.width = pct(entity.ki, entity.ki_max).toFixed(1) + "%";
-
-    hud.style.display = "block";
-  }
-
-  function setPanelRows(el, rows) {
-    if (!el) return;
-    el.innerHTML = rows.map(function (row) {
-      return [
-        "<span style='color:#ffcf84;'>", row[0], "</span>",
-        "<span style='color:#fff4df;'>", escapeHtml(row[1]), "</span>"
+      hud.innerHTML = [
+        "<div style='display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;'>",
+        "  <div id='dbf-hud-name' style='font-weight:bold;color:#e8fff0;'>SCOUTER</div>",
+        "  <div id='dbf-hud-pl' style='color:#98ffb0;'>PL: --</div>",
+        "</div>",
+        "<div style='margin:4px 0;'>",
+        "  <div style='display:flex;justify-content:space-between;gap:8px;'><span>HP</span><span id='dbf-hud-hp-text'>--/--</span></div>",
+        "  <div style='height:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;'>",
+        "    <div id='dbf-hud-hp-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#38ff7a,#8bff9c);'></div>",
+        "  </div>",
+        "</div>",
+        "<div style='margin:4px 0 0;'>",
+        "  <div style='display:flex;justify-content:space-between;gap:8px;'><span>KI</span><span id='dbf-hud-ki-text'>--/--</span></div>",
+        "  <div style='height:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;'>",
+        "    <div id='dbf-hud-ki-bar' style='height:100%;width:0%;background:linear-gradient(90deg,#47c8ff,#86f2ff);'></div>",
+        "  </div>",
+        "</div>"
       ].join("");
-    }).join("");
-  }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function prettyValue(v, fallback) {
-    if (v == null || v === "") return fallback || "--";
-    return String(v).replace(/_/g, " ");
-  }
-
-  function updatePlayerPanel(entity) {
-    if (!entity) return;
-    var panel = ensurePlayerPanel();
-    if (!panel) return;
-
-    var lines = document.getElementById("dbf-player-panel-lines");
-    var appearance = entity.appearance || {};
-    setPanelRows(lines, [
-      ["Name", prettyValue(entity.name)],
-      ["Race", prettyValue(entity.race || appearance.race)],
-      ["Sex", prettyValue(entity.sex || appearance.sex)],
-      ["Hair", prettyValue(appearance.hair_style)],
-      ["HairColor", prettyValue(appearance.hair_color)],
-      ["Eyes", prettyValue(appearance.eye_color)],
-      ["Aura", prettyValue(appearance.aura_color)],
-      ["Sprite", prettyValue(entity.sprite_id)],
-      ["Room", prettyValue(entity.room_name)],
-    ]);
-
-    panel.style.display = "block";
-  }
-
-  function routeEventPacket(packet) {
-    if (!packet) return;
-    if ((packet.type === "player_frame" || packet.type === "entity_delta") && packet.entity) {
-      updateScouterHud(packet.entity); // HUD remains stats-only (HP/KI/PL)
-      updatePlayerPanel(packet.entity); // Appearance/details belong in player panel
+      host.appendChild(hud);
+      return hud;
     }
-  }
 
-  function processEventInNode(node) {
-    if (!(node instanceof HTMLElement)) return;
-    var rawHtml = node.innerHTML || "";
-    var text = htmlToText(rawHtml);
-    if (text.indexOf("@event ") < 0) return;
+    function ensurePlayerPanel() {
+      if (document.getElementById("dbforged-player-panel")) {
+        return document.getElementById("dbforged-player-panel");
+      }
 
-    var eventResult = tryHandleEventPacket(rawHtml);
-    if (!eventResult.handled) return;
+      var host = document.querySelector("#main-sub") || document.querySelector("#main") || document.body;
+      if (!host) return null;
+      if (host !== document.body && getComputedStyle(host).position === "static") {
+        host.style.position = "relative";
+      }
 
-    // Keep any visible prefix before the event payload (e.g. a prompt line),
-    // otherwise hide the debug event line completely.
-    if (eventResult.html && htmlToText(eventResult.html)) {
-      node.innerHTML = eventResult.html;
-    } else {
-      node.style.display = "none";
+      var panel = document.createElement("div");
+      panel.id = "dbforged-player-panel";
+      panel.style.cssText = [
+        "position:absolute",
+        "top:8px",
+        "left:8px",
+        "z-index:30",
+        "pointer-events:none",
+        "width:min(340px, calc(100% - 16px))",
+        "background:linear-gradient(180deg, rgba(18,12,6,0.92), rgba(10,7,4,0.94))",
+        "border:1px solid rgba(255,190,90,0.28)",
+        "box-shadow:0 0 0 1px rgba(0,0,0,0.55) inset, 0 6px 18px rgba(0,0,0,0.45)",
+        "color:#ffe6bd",
+        "font:12px/1.3 Consolas, 'Courier New', monospace",
+        "padding:8px 10px",
+        "border-radius:6px",
+        "display:none"
+      ].join(";");
+
+      panel.innerHTML = [
+        "<div style='font-weight:bold;color:#fff0d2;margin-bottom:6px;'>PLAYER</div>",
+        "<div id='dbf-player-panel-lines' style='display:grid;grid-template-columns:auto 1fr;gap:2px 8px;'></div>"
+      ].join("");
+
+      host.appendChild(panel);
+      return panel;
     }
-  }
 
-  function installEventLeakFallback() {
-    var target = document.getElementById("messagewindow");
-    if (!target) {
-      setTimeout(installEventLeakFallback, 300);
-      return;
+    function pct(cur, max) {
+      var c = Number(cur || 0);
+      var m = Math.max(1, Number(max || 1));
+      return Math.max(0, Math.min(100, (c / m) * 100));
     }
-    if (target.__dbforgedEventLeakFallbackInstalled) return;
-    target.__dbforgedEventLeakFallbackInstalled = true;
 
-    target.querySelectorAll("div").forEach(processEventInNode);
+    function updateScouterHud(entity) {
+      if (!entity) return;
+      var hud = ensureScouterHud();
+      if (!hud) return;
 
-    var observer = new MutationObserver(function (mutations) {
-      mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-          if (!(node instanceof HTMLElement)) return;
-          processEventInNode(node);
-          node.querySelectorAll && node.querySelectorAll("div").forEach(processEventInNode);
+      var nameEl = document.getElementById("dbf-hud-name");
+      var plEl = document.getElementById("dbf-hud-pl");
+      var hpText = document.getElementById("dbf-hud-hp-text");
+      var hpBar = document.getElementById("dbf-hud-hp-bar");
+      var kiText = document.getElementById("dbf-hud-ki-text");
+      var kiBar = document.getElementById("dbf-hud-ki-bar");
+
+      if (nameEl) nameEl.textContent = (entity.name || "Player") + " SCOUTER";
+      if (plEl) plEl.textContent = "PL: " + String(entity.displayed_pl ?? entity.pl ?? "--");
+      if (hpText) hpText.textContent = String(entity.hp ?? 0) + "/" + String(entity.hp_max ?? 0);
+      if (kiText) kiText.textContent = String(entity.ki ?? 0) + "/" + String(entity.ki_max ?? 0);
+      if (hpBar) hpBar.style.width = pct(entity.hp, entity.hp_max).toFixed(1) + "%";
+      if (kiBar) kiBar.style.width = pct(entity.ki, entity.ki_max).toFixed(1) + "%";
+
+      hud.style.display = "block";
+    }
+
+    function setPanelRows(el, rows) {
+      if (!el) return;
+      el.innerHTML = rows.map(function (row) {
+        return [
+          "<span style='color:#ffcf84;'>", row[0], "</span>",
+          "<span style='color:#fff4df;'>", escapeHtml(row[1]), "</span>"
+        ].join("");
+      }).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function prettyValue(v, fallback) {
+      if (v == null || v === "") return fallback || "--";
+      return String(v).replace(/_/g, " ");
+    }
+
+    function updatePlayerPanel(entity) {
+      if (!entity) return;
+      var panel = ensurePlayerPanel();
+      if (!panel) return;
+
+      var lines = document.getElementById("dbf-player-panel-lines");
+      var appearance = entity.appearance || {};
+      setPanelRows(lines, [
+        ["Name", prettyValue(entity.name)],
+        ["Race", prettyValue(entity.race || appearance.race)],
+        ["Sex", prettyValue(entity.sex || appearance.sex)],
+        ["Hair", prettyValue(appearance.hair_style)],
+        ["HairColor", prettyValue(appearance.hair_color)],
+        ["Eyes", prettyValue(appearance.eye_color)],
+        ["Aura", prettyValue(appearance.aura_color)],
+        ["Sprite", prettyValue(entity.sprite_id)],
+        ["Room", prettyValue(entity.room_name)],
+      ]);
+
+      panel.style.display = "block";
+    }
+
+    function routeEventPacket(packet) {
+      if (!packet) return;
+      if ((packet.type === "player_frame" || packet.type === "entity_delta") && packet.entity) {
+        updateScouterHud(packet.entity); // HUD remains stats-only (HP/KI/PL)
+        updatePlayerPanel(packet.entity); // Appearance/details belong in player panel
+      }
+    }
+
+    function processEventInNode(node) {
+      if (!(node instanceof HTMLElement)) return;
+      var rawHtml = node.innerHTML || "";
+      var text = htmlToText(rawHtml);
+      if (text.indexOf("@event ") < 0) return;
+
+      var eventResult = tryHandleEventPacket(rawHtml);
+      if (!eventResult.handled) return;
+
+      // Keep any visible prefix before the event payload (e.g. a prompt line),
+      // otherwise hide the debug event line completely.
+      if (eventResult.html && htmlToText(eventResult.html)) {
+        node.innerHTML = eventResult.html;
+      } else {
+        node.style.display = "none";
+      }
+    }
+
+    function installEventLeakFallback() {
+      var target = document.getElementById("messagewindow");
+      if (!target) {
+        setTimeout(installEventLeakFallback, 300);
+        return;
+      }
+      if (target.__dbforgedEventLeakFallbackInstalled) return;
+      target.__dbforgedEventLeakFallbackInstalled = true;
+
+      target.querySelectorAll("div").forEach(processEventInNode);
+
+      var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+          mutation.addedNodes.forEach(function (node) {
+            if (!(node instanceof HTMLElement)) return;
+            processEventInNode(node);
+            node.querySelectorAll && node.querySelectorAll("div").forEach(processEventInNode);
+          });
         });
       });
-    });
-    observer.observe(target, { childList: true, subtree: true });
-  }
-
-  function tryHandleEventPacket(rawHtml) {
-    var text = htmlToText(rawHtml || "");
-    var idx = text.indexOf("@event ");
-    if (idx < 0) return { handled: false, html: rawHtml };
-
-    var packet = safeJsonParse(text.slice(idx + 7));
-    if (packet) {
-      routeEventPacket(packet);
+      observer.observe(target, { childList: true, subtree: true });
     }
 
-    // Always suppress the event payload; if it was appended after user-visible text,
-    // keep the prefix so prompts (like character creation) still render.
-    var htmlIdx = String(rawHtml || "").indexOf("@event ");
-    if (htmlIdx < 0) return { handled: true, html: "" };
-    var prefixHtml = String(rawHtml || "").slice(0, htmlIdx).trim();
-    return { handled: true, html: prefixHtml };
-  }
+    function tryHandleEventPacket(rawHtml) {
+      var text = htmlToText(rawHtml || "");
+      var idx = text.indexOf("@event ");
+      if (idx < 0) return { handled: false, html: rawHtml };
 
-  function looksLikeWelcome(html) {
-    var t = htmlToText(html).toLowerCase();
-    return WELCOME_MARKERS.every(function (m) { return t.includes(m); });
-  }
-
-  function ensureLogo(messageWindow) {
-    if (document.getElementById("dbforged-message-logo")) return;
-    var wrap = document.createElement("div");
-    wrap.id = "dbforged-message-logo";
-    wrap.style.cssText = "padding:10px 8px 6px;background:#000;";
-
-    var img = document.createElement("img");
-    img.src = "{% static 'ui/dbforgedfullcoloralpha.png' %}?v=20260222-1736";
-    img.alt = "Dragonball Forged";
-    img.style.cssText = [
-      "display:block",
-      "max-width:min(900px,96%)",
-      "height:auto",
-      "margin:0 auto",
-      "filter:drop-shadow(0 2px 8px rgba(0,0,0,0.65))"
-    ].join(";");
-
-    wrap.appendChild(img);
-    messageWindow.prepend(wrap);
-  }
-
-  function renderWelcomeBlock(messageWindow, html, cls) {
-    if (document.getElementById("dbforged-welcome-block")) return;
-    ensureLogo(messageWindow);
-
-    var block = document.createElement("div");
-    block.id = "dbforged-welcome-block";
-    block.className = cls || "out";
-    block.style.cssText = [
-      "margin:0 auto 12px",
-      "max-width:min(900px,96%)",
-      "text-align:center",
-      "background:#000",
-      "padding:8px 12px 12px"
-    ].join(";");
-
-    // Preserve Evennia color markup already converted to HTML.
-    block.innerHTML = html;
-    messageWindow.appendChild(block);
-    return block;
-  }
-
-  function bootstrapExistingWelcome(messageWindow) {
-    if (!messageWindow || document.getElementById("dbforged-welcome-block")) return;
-    var best = null;
-    var bestLen = Infinity;
-    messageWindow.querySelectorAll("div").forEach(function (el) {
-      if (!(el instanceof HTMLElement)) return;
-      if (el.id === "dbforged-message-logo" || el.id === "dbforged-welcome-block") return;
-      var html = el.innerHTML || "";
-      if (!looksLikeWelcome(html)) return;
-      var len = (el.textContent || "").length;
-      if (len < bestLen) {
-        bestLen = len;
-        best = el;
+      var packet = safeJsonParse(text.slice(idx + 7));
+      if (packet) {
+        routeEventPacket(packet);
       }
-    });
-    if (!best) return;
-    renderWelcomeBlock(messageWindow, best.innerHTML || "", best.className || "out");
-    best.style.display = "none";
-  }
 
-  function installWelcomeOutputOverride() {
-    if (!window.plugins || !window.plugins.defaultout || !window.$) {
-      setTimeout(installWelcomeOutputOverride, 300);
-      return;
+      // Always suppress the event payload; if it was appended after user-visible text,
+      // keep the prefix so prompts (like character creation) still render.
+      var htmlIdx = String(rawHtml || "").indexOf("@event ");
+      if (htmlIdx < 0) return { handled: true, html: "" };
+      var prefixHtml = String(rawHtml || "").slice(0, htmlIdx).trim();
+      return { handled: true, html: prefixHtml };
     }
-    if (window.plugins.defaultout.__dbforgedWrapped) return;
 
-    var originalOnText = window.plugins.defaultout.onText;
-    if (typeof originalOnText !== "function") return;
+    function looksLikeWelcome(html) {
+      var t = htmlToText(html).toLowerCase();
+      return WELCOME_MARKERS.every(function (m) { return t.includes(m); });
+    }
 
-    // Insert the logo immediately for already-rendered welcome screens.
-    var existingWindow = $("#messagewindow");
-    if (existingWindow.length) {
-      ensureLogo(existingWindow[0]);
-      bootstrapExistingWelcome(existingWindow[0]);
+    function ensureLogo(messageWindow) {
+      if (document.getElementById("dbforged-message-logo")) return;
+      var wrap = document.createElement("div");
+      wrap.id = "dbforged-message-logo";
+      wrap.style.cssText = "padding:10px 8px 6px;background:#000;";
+
+      var img = document.createElement("img");
+      img.src = "{% static 'ui/dbforgedfullcoloralpha.png' %}?v=20260222-1736";
+      img.alt = "Dragonball Forged";
+      img.style.cssText = [
+        "display:block",
+        "max-width:min(900px,96%)",
+        "height:auto",
+        "margin:0 auto",
+        "filter:drop-shadow(0 2px 8px rgba(0,0,0,0.65))"
+      ].join(";");
+
+      wrap.appendChild(img);
+      messageWindow.prepend(wrap);
+    }
+
+    function renderWelcomeBlock(messageWindow, html, cls) {
+      if (document.getElementById("dbforged-welcome-block")) return;
+      ensureLogo(messageWindow);
+
+      var block = document.createElement("div");
+      block.id = "dbforged-welcome-block";
+      block.className = cls || "out";
+      block.style.cssText = [
+        "margin:0 auto 12px",
+        "max-width:min(900px,96%)",
+        "text-align:center",
+        "background:#000",
+        "padding:8px 12px 12px"
+      ].join(";");
+
+      // Preserve Evennia color markup already converted to HTML.
+      block.innerHTML = html;
+      messageWindow.appendChild(block);
+      return block;
+    }
+
+    function bootstrapExistingWelcome(messageWindow) {
+      if (!messageWindow || document.getElementById("dbforged-welcome-block")) return;
+      var best = null;
+      var bestLen = Infinity;
+      messageWindow.querySelectorAll("div").forEach(function (el) {
+        if (!(el instanceof HTMLElement)) return;
+        if (el.id === "dbforged-message-logo" || el.id === "dbforged-welcome-block") return;
+        var html = el.innerHTML || "";
+        if (!looksLikeWelcome(html)) return;
+        var len = (el.textContent || "").length;
+        if (len < bestLen) {
+          bestLen = len;
+          best = el;
+        }
+      });
+      if (!best) return;
+      renderWelcomeBlock(messageWindow, best.innerHTML || "", best.className || "out");
+      best.style.display = "none";
+    }
+
+    function installWelcomeOutputOverride() {
+      if (!window.plugins || !window.plugins.defaultout || !window.$) {
+        setTimeout(installWelcomeOutputOverride, 300);
+        return;
+      }
+      if (window.plugins.defaultout.__dbforgedWrapped) return;
+
+      var originalOnText = window.plugins.defaultout.onText;
+      if (typeof originalOnText !== "function") return;
+
+      // Insert the logo immediately for already-rendered welcome screens.
+      var existingWindow = $("#messagewindow");
+      if (existingWindow.length) {
+        ensureLogo(existingWindow[0]);
+        bootstrapExistingWelcome(existingWindow[0]);
+        installEventLeakFallback();
+      }
+
+      window.plugins.defaultout.onText = function (args, kwargs) {
+        var html = (args && args[0]) || "";
+        var mwin = $("#messagewindow");
+        if (!mwin.length) {
+          return originalOnText(args, kwargs);
+        }
+
+        var eventResult = tryHandleEventPacket(html);
+        if (eventResult.handled) {
+          if (!eventResult.html) {
+            return true;
+          }
+          html = eventResult.html;
+        }
+
+        if (!htmlToText(html)) {
+          return true;
+        }
+
+        if (args && args.length) {
+          args = Array.prototype.slice.call(args);
+          args[0] = html;
+        } else {
+          args = [html];
+        }
+
+        ensureLogo(mwin[0]);
+
+        if (looksLikeWelcome(html)) {
+          renderWelcomeBlock(mwin[0], html, kwargs == null ? "out" : kwargs["cls"]);
+          var scrollHeight = mwin.parent().parent().prop("scrollHeight");
+          mwin.parent().parent().animate({ scrollTop: scrollHeight }, 0);
+          return true;
+        }
+
+        return originalOnText(args, kwargs);
+      };
+
+      window.plugins.defaultout.__dbforgedWrapped = true;
       installEventLeakFallback();
     }
 
-    window.plugins.defaultout.onText = function (args, kwargs) {
-      var html = (args && args[0]) || "";
-      var mwin = $("#messagewindow");
-      if (!mwin.length) {
-        return originalOnText(args, kwargs);
-      }
-
-      var eventResult = tryHandleEventPacket(html);
-      if (eventResult.handled) {
-        if (!eventResult.html) {
-          return true;
-        }
-        html = eventResult.html;
-      }
-
-      if (!htmlToText(html)) {
-        return true;
-      }
-
-      if (args && args.length) {
-        args = Array.prototype.slice.call(args);
-        args[0] = html;
-      } else {
-        args = [html];
-      }
-
-      ensureLogo(mwin[0]);
-
-      if (looksLikeWelcome(html)) {
-        renderWelcomeBlock(mwin[0], html, kwargs == null ? "out" : kwargs["cls"]);
-        var scrollHeight = mwin.parent().parent().prop("scrollHeight");
-        mwin.parent().parent().animate({ scrollTop: scrollHeight }, 0);
-        return true;
-      }
-
-      return originalOnText(args, kwargs);
-    };
-
-    window.plugins.defaultout.__dbforgedWrapped = true;
-    installEventLeakFallback();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", installWelcomeOutputOverride, { once: true });
-  } else {
-    installWelcomeOutputOverride();
-  }
-})();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", installWelcomeOutputOverride, { once: true });
+    } else {
+      installWelcomeOutputOverride();
+    }
+  })();
 </script>
 {% endblock %}
