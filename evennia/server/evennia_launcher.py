@@ -484,6 +484,32 @@ def _print_info(portal_info_dict, server_info_dict):
             if isinstance(value, list):
                 value = "\n{}".format(ind).join(str(val) for val in value)
             out[key] = value
+        # Some launcher status paths report the gamedir basename (e.g. "live")
+        # instead of the configured SERVERNAME. Prefer the configured value when available.
+        if out.get("servername"):
+            configured = ""
+            try:
+                from django.conf import settings as _dj_settings
+
+                configured = str(getattr(_dj_settings, "SERVERNAME", "") or "").strip()
+            except Exception:
+                configured = ""
+            if not configured:
+                # Fallback for launcher commands that haven't initialized Django settings.
+                for relpath in ("server/conf/secret_settings.py", "server/conf/settings.py"):
+                    try:
+                        with open(os.path.join(GAMEDIR, relpath), "r", encoding="utf-8") as _f:
+                            text = _f.read()
+                        match = re.search(
+                            r"(?m)^\s*SERVERNAME\s*=\s*(['\"])(?P<name>.+?)\1\s*$", text
+                        )
+                        if match:
+                            configured = match.group("name").strip()
+                            break
+                    except Exception:
+                        continue
+            if configured:
+                out["servername"] = configured
         return out
 
     def _strip_empty_lines(string):
