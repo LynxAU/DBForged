@@ -50,6 +50,24 @@ def compute_current_pl(character):
         form_factor = (form.get("pl_multiplier", 1.0) + mastery_bonus)
         form_speed_bias = form.get("speed_bias", 1.0)
 
+    # Fusion bonus - add fusion multiplier on top of form
+    fusion_factor = 1.0
+    fusion_type = getattr(character.db, 'fusion_type', None)
+    if fusion_type:
+        from world.fusions import get_fusion_data
+        fusion_data = get_fusion_data(character)
+        if fusion_data:
+            # Get the fusion form's multiplier from the active form
+            if form_key and form_key in ['potara_fusion', 'metamoran_fusion', 'fusion_grade_super_saiyan']:
+                # Already using fusion form - multiplier is in the form itself
+                pass
+            else:
+                # Character is fused but not using fusion form - apply base fusion bonus
+                if fusion_type == 'potara':
+                    fusion_factor = 2.5
+                elif fusion_type == 'metamoran':
+                    fusion_factor = 2.8
+
     suppression_factor = character.db.suppression_factor if character.db.suppressed else 1.0
     combat_readiness = 0.94 if character.db.suppressed else 1.0
     control_efficiency = 1.0 + min(0.12, ki_control * 0.004)
@@ -58,7 +76,7 @@ def compute_current_pl(character):
         bruised_factor = character.get_status_data("bruised", {}).get("pl_penalty", 0.92)
 
     combat_pl = base_power * stat_factor * injury_factor * ki_factor * charge_factor
-    combat_pl *= form_factor * form_speed_bias * combat_readiness * control_efficiency * bruised_factor
+    combat_pl *= form_factor * form_speed_bias * combat_readiness * control_efficiency * bruised_factor * fusion_factor
     combat_pl = int(max(1, combat_pl))
 
     displayed_pl = int(max(1, combat_pl * suppression_factor))
@@ -74,6 +92,7 @@ def compute_current_pl(character):
         "control_efficiency": round(control_efficiency, 3),
         "bruised_factor": bruised_factor,
         "suppression_factor": suppression_factor,
+        "fusion_factor": fusion_factor,
         "displayed_pl": displayed_pl,
     }
 

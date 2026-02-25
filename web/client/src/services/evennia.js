@@ -3,7 +3,8 @@
  * Handles connection to Evennia server with ANSI parsing and sprite support
  */
 
-const WEBSOCKET_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/webclient`
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const WEBSOCKET_URL = `${wsProtocol}//${window.location.host}/webclient`
 
 class EvenniaService {
   constructor() {
@@ -23,12 +24,20 @@ class EvenniaService {
     return new Promise((resolve, reject) => {
       this.handlers = { ...this.handlers, ...options }
       
+      // Close existing connection if any
+      if (this.ws) {
+        this.ws.close()
+        this.ws = null
+      }
+      
       try {
+        // Create new WebSocket without any saved session
         this.ws = new WebSocket(WEBSOCKET_URL)
         
         this.ws.onopen = () => {
           console.log('[Evennia] Connected')
           this.reconnectAttempts = 0
+          // Don't auto-authenticate - require explicit login
           if (this.handlers.onOpen) this.handlers.onOpen()
           resolve()
         }

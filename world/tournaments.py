@@ -410,6 +410,41 @@ WORLD_BOSSES = {
 }
 
 
+def spawn_world_boss(boss_name: str, base_power: int):
+    """
+    Manually spawn a world boss.
+    
+    Args:
+        boss_name: Name of the boss to spawn
+        base_power: Base power level of the boss
+    
+    Returns:
+        Dict with success status and message
+    """
+    if _world_boss_state["active"]:
+        return {"success": False, "reason": "Boss already active"}
+    
+    # Initialize world boss state
+    _world_boss_state.update({
+        "active": True,
+        "boss_name": boss_name,
+        "base_power": base_power,
+        "current_hp": base_power * 10,  # HP = 10x power level
+        "max_hp": base_power * 10,
+        "start_time": datetime.now().isoformat(),
+        "damage_log": [],
+    })
+    
+    _save_world_boss_state()
+    
+    return {
+        "success": True,
+        "boss_name": boss_name,
+        "power_level": base_power,
+        "hp": base_power * 10
+    }
+
+
 def try_spawn_world_boss():
     """Try to spawn a world boss (random chance)."""
     if _world_boss_state["active"]:

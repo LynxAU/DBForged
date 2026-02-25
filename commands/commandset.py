@@ -35,6 +35,15 @@ from commands.db_commands import (
     CmdLogoTest,
     CmdHelpDB,
     CmdTeleportPlayer,
+    CmdPotara,
+    CmdDance,
+    CmdUnfuse,
+    CmdFusionStatus,
+    CmdAcceptFusion,
+    CmdDeclineFusion,
+    CmdGather,
+    CmdFind,
+    CmdMeditate,
 )
 
 
@@ -64,3 +73,12 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdLogoTest())
         self.add(CmdHelpDB())
         self.add(CmdGuild())
+        self.add(CmdPotara())
+        self.add(CmdDance())
+        self.add(CmdUnfuse())
+        self.add(CmdFusionStatus())
+        self.add(CmdAcceptFusion())
+        self.add(CmdDeclineFusion())
+        self.add(CmdGather())
+        self.add(CmdFind())
+        self.add(CmdMeditate())

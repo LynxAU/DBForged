@@ -108,6 +108,60 @@ QUESTLINES = dict(
         _quest("biodroid_carapace_protocol", "Biodroid Carapace Protocol", "cell_shade", "Stabilize bio-armor hardening under repeated incoming pressure.", {"forms": ["bioarmor_carapace"]}),
         _quest("capsule_arena_combo_path", "Capsule Arena Combo Path", "vegeta", "Refine close-range pressure strings and knee punishes around guard breaks.", {"techniques": ["crusher_knee"]}),
         _quest("spirit_control_basics", "Spirit Control Basics", "krillin", "Guide detached ki shots and maintain pressure on evasive targets.", {"techniques": ["spirit_shot"]}),
+        # =================== FUSION QUESTS ===================
+        _quest("potara_fusion_rites", "Potara Fusion Rites", "elder_kai", "Learn the ancient Potara fusion ceremony from the Elder Kai.", {"forms": ["potara_fusion"], "techniques": ["potara_earrings"]}),
+        _quest("metamoran_dance_teaching", "Metamoran Dance Teaching", "metamoran_master", "Learn the intricate Metamoran dance fusion technique.", {"techniques": ["metamoran_dance"]}),
+        _quest("fusion_beam_mastery", "Fusion Beam Mastery", "gogeta", "Master the combined beam techniques available only to fused warriors.", {"techniques": ["fusion_kamehameha", "double_galick_cannon"]}),
+        _quest("potara_ultimate_arts", "Potara Ultimate Arts", "elder_kai", "Learn the devastating Potara-exclusive finishing techniques.", {"techniques": ["soul_buster"], "forms": ["potara_fusion"]}),
+        _quest("metamoran_barrage_training", "Metamoran Barrage Training", "metamoran_master", "Master the rapid-fire attacks unique to Metamoran fusions.", {"techniques": ["stardust_fall"], "forms": ["metamoran_fusion"]}),
+        # =================== KAME ISLAND QUESTS ===================
+        _quest("kame_island_arrival", "Welcome to Kame Island", "master_roshi", "Master Roshi awaits you at his training grounds. Go inside Kame House and talk to him!", {"zeni": 100}),
+        
+        # ═══════════════════════════════════════════════════════════════════════
+        # ROSHI'S ERRAND CHAIN - The Authentic DBZ Training Experience!
+        # ═══════════════════════════════════════════════════════════════════════
+        # These quests make the player do random jobs like Goku/Krillin did!
+        # Only after completing ALL of them do you learn Kamehameha
+        
+        _quest("roshi_errand_hermit_crabs", "Roshi's Beach Cleanup", "master_roshi", 
+                "Master Roshi needs help! The beach is overrun with hermit crabs. "
+                "Go to the Beach (south from here), then type 'gather crabs' 5 times to collect them!",
+                {"zeni": 50, "unlock_next": "roshi_errand_debris"}),
+        
+        _quest("roshi_errand_debris", "Debris Duty", "master_roshi", 
+                "Good work with the crabs! Now the beach is covered in driftwood and junk. "
+                "Stay at the Beach and type 'gather debris' 3 times to clean it up!",
+                {"zeni": 75, "unlock_next": "roshi_errand_turtle"}),
+        
+        _quest("roshi_errand_turtle", "Lost Turtle", "master_roshi", 
+                "Hmm, one of my turtles has gone missing... Last seen near the Meditation Clearing (go east from Training Grounds). "
+                "Go there and type 'find turtle' to search for it!",
+                {"zeni": 100, "unlock_next": "roshi_meditation_training"}),
+        
+        _quest("roshi_meditation_training", "Meditation Matters", "master_roshi", 
+                "You're getting stronger, but strength without focus is worthless. "
+                "Go to the Meditation Clearing and type 'meditate' to train your mind!",
+                {"zeni": 125, "unlock_next": "roshi_sparring_test"}),
+        
+        _quest("roshi_sparring_test", "Sparring Test", "master_roshi", 
+                "Now let's see if you can actually fight! Defeat the Training Dummy MK-2 "
+                "in the Training Grounds (south from the beach). Type 'attack dummy'!",
+                {"zeni": 150, "unlock_next": "roshi_kamehameha_trial"}),
+        
+        _quest("roshi_kamehameha_trial", "The Turtle School's Secret", "master_roshi", 
+                "Alright... you've proven yourself. You've done the work, built your focus, "
+                "and shown you can fight. Now... I'll teach you the Kamehameha!",
+                {"techniques": ["kame_wave"]}),
+        
+        # Legacy quest - old players can still get it
+        _quest("roshi_basics", "The Turtle Hermit's Test", "master_roshi", 
+                "Prove yourself to Master Roshi by completing his training tasks.",
+                {"techniques": ["kame_wave"]}),
+        
+        _quest("meet_the_family", "Meet the Family", "krillin", 
+                "Android 18 and Marron are vacationing on Kame Island. Go to the Vacation Cottage (east from the beach) and say hello!", {"zeni": 500}),
+        _quest("island_explorer", "Island Explorer", "master_roshi", 
+                "Explore all corners of Kame Island. Visit 8 different locations! Check your quest journal with 'quests'.", {"zeni": 300}),
     ]
 )
 

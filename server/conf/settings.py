@@ -35,7 +35,7 @@ from evennia.settings_default import *
 
 # This is the name of your game. Keep the repo default live-safe, and let
 # local/dev instances override via env var or secret_settings.py.
-SERVERNAME = os.environ.get("DBFORGED_SERVERNAME", "live")
+SERVERNAME = os.environ.get("DBFORGED_SERVERNAME", "DBForged")
 DBFORGED_VERSION = "0.1"
 DBFORGED_EMIT_CLIENT_EVENTS = True
 

@@ -1,5 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
 
+// Strip HTML color tags from Evennia messages
+const stripHtmlColors = (html) => {
+  if (!html) return ''
+  // Remove <font color="..."> tags
+  let result = html.replace(/<font\s+color=[^>]*>/gi, '')
+  result = result.replace(/<\/font>/gi, '')
+  // Remove <span style="color: ..."> tags
+  result = result.replace(/<span\s+style=[^>]*color:[^>]*>/gi, '')
+  result = result.replace(/<\/span>/gi, '')
+  return result
+}
+
 /**
  * Chat - Chat window with command input
  */
@@ -26,10 +38,10 @@ export function Chat({ messages, onSendCommand }) {
       <div className="chat-messages">
         {messages.map((msg, i) => (
           <div key={i} className={`chat-message ${msg.type}`}>
-            <span 
-              dangerouslySetInnerHTML={{ 
-                __html: msg.text.replace(/\n/g, '<br/>') 
-              }} 
+            <span
+              dangerouslySetInnerHTML={{
+                __html: stripHtmlColors(msg.content?.html ?? msg.content ?? '').replace(/\n/g, '<br/>')
+              }}
             />
           </div>
         ))}

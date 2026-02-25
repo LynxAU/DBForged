@@ -40,6 +40,9 @@ def _tech(
     ki_cost,
     cooldown,
     *,
+    damage_base=0,
+    damage_factor=1.0,
+    accuracy=80,
     effect=None,
     cast_time=0.0,
     range_band="mid",
@@ -51,6 +54,12 @@ def _tech(
 ):
     effect = effect or {"type": "utility", "summary": "No effect data"}
     scaling = effect.get("scaling", {}) if isinstance(effect, dict) else {}
+    # Add damage stats to effect for damage-dealing techniques
+    if damage_base > 0:
+        if isinstance(effect, dict):
+            effect["base_damage"] = damage_base
+            effect["damage_factor"] = damage_factor
+            effect["accuracy"] = accuracy
     return (
         key,
         {
@@ -768,7 +777,7 @@ _T = [
     ),
     # King Kai / Kaioken techniques
     _tech(
-        "kaioken",
+        "kaioken_charge",
         "Kaioken",
         "transformation",
         "Activate the Kaioken transformation. Hold to charge - x3 at 3s, x10 at 6s, x20 at 10s. Higher multipliers increase power but also strain and ki drain.",
@@ -782,7 +791,7 @@ _T = [
         extras={"delegates_to_form_system": True, "hp_strain_hook": True, "hold_to_charge": True},
     ),
     _tech(
-        "spirit_bomb",
+        "spirit_bomb_charge",
         "Spirit Bomb",
         "special",
         "Gather energy from all living things to create a devastating concentrated attack.",
@@ -960,6 +969,99 @@ _T = [
         target="self",
         range_band="self",
         prerequisites={"zeni_cost": 1000},
+    ),
+    # =================== FUSION TECHNIQUES ===================
+    _tech(
+        "metamoran_dance",
+        "Metamoran Dance",
+        "special",
+        "The legendary dance technique used to fuse two warriors into one. Must be performed with a partner.",
+        ["fusion", "special", "dance"],
+        0,
+        0,
+        effect={"type": "fusion_dance", "summary": "Fuse with partner for 30 minutes"},
+        target="partner",
+        range_band="melee",
+    ),
+    _tech(
+        "potara_earrings",
+        "Potara Earrings",
+        "equipment",
+        "Sacred Potara earrings that enable fusion when worn by two warriors. Required for Potara fusion.",
+        ["fusion", "equipment", "potara"],
+        0,
+        0,
+        effect={"type": "fusion_item", "summary": "Required for Potara fusion"},
+        target="self",
+        range_band="self",
+    ),
+    _tech(
+        "fusion_kamehameha",
+        "Fusion Kamehameha",
+        "beam",
+        "A devastating beam attack that only fused warriors can use. Combines the energy of both fighters into one massive attack.",
+        ["beam", "fusion", "ultimate"],
+        35,
+        45.0,
+        damage_base=180,
+        damage_factor=2.2,
+        accuracy=95,
+        vfx_id="vfx_fusion_beam_gold",
+        effect={"type": "damage", "stun": 3, "beam_struggle_bonus": 0.25},
+        target="enemy",
+        range_band="far",
+        prerequisites={"requires_fusion": True},
+    ),
+    _tech(
+        "soul_buster",
+        "Soul Buster",
+        "blast",
+        "The ultimate Potara fusion finishing technique. A massive energy sphere that obliterates everything in its path.",
+        ["blast", "fusion", "ultimate"],
+        40,
+        55.0,
+        damage_base=220,
+        damage_factor=2.5,
+        accuracy=92,
+        vfx_id="vfx_soul_buster",
+        effect={"type": "damage", "stun": 4, "armor_break": 1},
+        target="enemy",
+        range_band="far",
+        prerequisites={"requires_fusion": True, "requires_form": "potara_fusion"},
+    ),
+    _tech(
+        "stardust_fall",
+        "Stardust Fall",
+        "blast",
+        "A barrage of explosive energy bullets unique to Metamoran fusions. Each shot packs incredible force.",
+        ["blast", "fusion", "barrage"],
+        25,
+        30.0,
+        damage_base=120,
+        damage_factor=1.8,
+        accuracy=90,
+        vfx_id="vfx_stardust",
+        effect={"type": "damage", "stun": 2},
+        target="enemy",
+        range_band="far",
+        prerequisites={"requires_fusion": True, "requires_form": "metamoran_fusion"},
+    ),
+    _tech(
+        "double_galick_cannon",
+        "Double Galick Cannon",
+        "beam",
+        "A powerful beam attack that channels both fighters' energy simultaneously. Devastating against single targets.",
+        ["beam", "fusion", "power"],
+        30,
+        38.0,
+        damage_base=150,
+        damage_factor=2.0,
+        accuracy=93,
+        vfx_id="vfx_galick_fusion",
+        effect={"type": "damage", "stun": 3, "beam_struggle_bonus": 0.20},
+        target="enemy",
+        range_band="far",
+        prerequisites={"requires_fusion": True},
     ),
 ]
 

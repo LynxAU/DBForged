@@ -126,6 +126,34 @@ class Character(ObjectParent, DefaultCharacter):
         super().at_post_puppet(**kwargs)
         self._ensure_profile_defaults()
         emit_entity_delta(self)
+        
+        # ═══════════════════════════════════════════════════════════════
+        # FIRST LOGIN EXPERIENCE - The "WOW" Factor
+        # ═══════════════════════════════════════════════════════════════
+        first_login = getattr(self, 'db.first_login_done', None) is None
+        
+        if first_login:
+            self.db.first_login_done = True
+            # ═══════════════════════════════════════════════════════════════
+            # SPAWN NEW CHARACTERS ON KAME ISLAND
+            # ═══════════════════════════════════════════════════════════════
+            try:
+                from world.build_kame_island import get_kame_island_start
+                kame_start = get_kame_island_start()
+                if kame_start:
+                    self.location = kame_start
+                    self.msg("|g★ You arrive at Kame Island!|n")
+            except Exception as e:
+                # Fallback - don't break the game if this fails
+                pass
+            
+            self._do_first_login_experience()
+        
+        # Check if Metamoran fusion has expired while away
+        from world.fusions import check_and_handle_fusion_expiry
+        was_expired, msg = check_and_handle_fusion_expiry(self)
+        if was_expired:
+            self.msg(f"|r{msg}|n")
         try:
             from world.events import emit_map_data
             coords = getattr(self.db, "coords", (0, 0, 0))
@@ -133,6 +161,124 @@ class Character(ObjectParent, DefaultCharacter):
                 emit_map_data(self, coords[0], coords[1], radius=7)
         except Exception:
             pass
+
+    def _do_first_login_experience(self):
+        """EPIC first login experience that shows we're serious."""
+        from world.power import compute_current_pl
+        pl, _ = compute_current_pl(self)
+        
+        # ═══════════════════════════════════════════════════════════════
+        # THE ARRIVAL - Cinematic intro
+        # ═══════════════════════════════════════════════════════════════
+        intro = """
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║   ██████╗  ██████╗ ██████╗ ████████╗███████╗ ██████╗ ███╗   ██╗    ║
+║  ██╔════╝ ██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝██╔═══██╗████╗  ██║    ║
+║  ██║  ███╗██║   ██║██████╔╝   ██║   █████╗  ██║   ██║██╔██╗ ██║    ║
+║  ██║   ██║██║   ██║██╔══██╗   ██║   ██╔══╝  ██║   ██║██║╚██╗██║    ║
+║  ╚██████╔╝╚██████╔╝██║  ██║   ██║   ███████╗╚██████╔╝██║ ╚████║    ║
+║   ╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝    ║
+║                                                                      ║
+║   ██████╗ ███████╗██╗   ██╗██╗  ████████╗███████╗                    ║
+║  ██╔════╝ ██╔════╝██║   ██║██║  ╚══██╔══╝██╔════╝                    ║
+║  ██║  ███╗█████╗  ██║   ██║██║     ██║   █████╗                      ║
+║  ██║   ██║██╔══╝  ╚██╗ ██╔╝██║     ██║   ██╔══╝                      ║
+║  ╚██████╔╝███████╗ ╚████╔╝ ███████╗██║   ███████╗                    ║
+║   ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚═╝   ╚══════╝                    ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+        |g★|n Welcome to Earth, Warrior.
+
+        |yYour journey begins now.|n
+        """
+        self.msg(intro)
+        
+        # Show their power and make them feel special
+        power_msg = f"""
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                       ⚡ YOUR POTENTIAL ⚡                         ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║   Name:   |w{self.key}|n                                                 ║
+║   Race:   |c{self.db.race}|n                                             ║
+║   Power:  |r{pl:,}|n                                                ║
+║                                                                      ║
+║   |y★ Your power level is merely a number. What matters is your heart.|n ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+        """
+        self.msg(power_msg)
+        
+        # Give them immediate direction
+        directions = """
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                    ★ YOUR TRAINING BEGINS ★                        ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║   |g►|n  Type |wlook|n to see your surroundings                             ║
+║   |g►|n  Type |w+stats|n to view your full stats                            ║
+║   |g►|n  Type |whelp|n for commands                                       ║
+║   |g►|n  Type |wquest|n to see available missions                          ║
+║   |g►|n  Find a |yTrainer|n to learn techniques                          ║
+║   |g►|n  Go |wnorth|n to find training areas                            ║
+║                                                                      ║
+║   |r⚡ YOUR NEXT STEPS:|n                                           ║
+║   |g►|n  Meet Master Roshi inside Kame House - he has quests!        ║
+║   |g►|n  Try the |wTraining Dummy|n in the Training Grounds!            ║
+║   |g►|n  Type |wlook|n to see where you are, |whelp|n for commands.         ║
+║   |g►|n  Go to the |wDock|n and type |wboat|n to travel to Earth!           ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+        """
+        self.msg(directions)
+        
+        # Give them a starter technique immediately!
+        known = self.db.known_techniques or []
+        if 'ki_blast' not in known:
+            known.append('ki_blast')
+            self.db.known_techniques = known
+            self.msg("""
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                    ★ TECHNIQUE UNLOCKED ★                           ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║   |y✦ KI BLAST|n                                                      ║
+║   You've instinctively learned to fire a basic ki blast!            ║
+║                                                                      ║
+║   |g►|n  Type |wtech ki_blast|n to test it!                            ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+            """)
+        
+        # Auto-give some zeni for their first day
+        if not self.db.zeni or self.db.zeni < 100:
+            self.db.zeni = 500
+            self.msg("""
+
+|g★ You received 500zeni from your first day of training!|n
+            """)
+
+    def at_post_unpuppet(self, account, **kwargs):
+        """Called just after disconnecting account<->object link."""
+        # Auto-unfuse when logging out so partner doesn't get stuck
+        from world.fusions import is_fused, unfuse, get_fusion_partner
+        if is_fused(self):
+            ok, msg = unfuse(self)
+            # Try to notify the partner if they're online
+            partner_id = get_fusion_partner(self)
+            if partner_id:
+                from evennia import search_object
+                partner_objs = search_object(partner_id)
+                if partner_objs:
+                    partner = partner_objs[0]
+                    partner.msg(f"|yYour fusion partner {self.key} logged out. The fusion has ended.|n")
 
     def at_post_move(self, source_location, move_type="move", **kwargs):
         super().at_post_move(source_location, move_type=move_type, **kwargs)
@@ -211,7 +357,8 @@ class Character(ObjectParent, DefaultCharacter):
     def _refresh_sprite_id(self):
         race = (self.db.race or "humanoid").lower().replace(" ", "_")
         sex = (self.db.sex or "other").lower().replace(" ", "_")
-        self.db.sprite_id = f"sprite_{race}_{sex}"
+        # Use the animated walk cycle sprite for players
+        self.db.sprite_id = f"saiyan_warrior_walk_cycle"
 
     def _chargen_step_index(self):
         return int(self.db.chargen_step_index or 0)

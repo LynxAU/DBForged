@@ -207,32 +207,72 @@ def connection_screen():
     orange = "\x1b[38;2;255;140;0m"
     red = "\x1b[38;2;220;35;35m"
     yellow = "\x1b[38;2;255;215;0m"
+    cyan = "\x1b[38;2;0;255;255m"
+    gold = "\x1b[38;2;255;193;7m"
+    green = "\x1b[38;2;50;205;50m"
+    magenta = "\x1b[38;2;255;0;255m"
     reset = "\x1b[0m"
-    # Welcome to Drag(*)nball Forged - Dragn=Yellow, {}=orange, *ED=red
-    dragonball_forged = f"{yellow}Drag{orange}({red}*{orange})nball{orange}Forg{red}ED{reset}"
-    # Center tagline under the 64-char banner
-    tagline = (
-        " |wWelcome to |n"
-        f"{dragonball_forged}|n "
-        "|wby|n |mTeam Tartarus|n"
-    )
-    header = (
-        "|b==============================================================|n\n"
-        f"     Welcome to |g{settings.SERVERNAME}|n, version {version}!\n"
-    )
-    if logo:
-        header += "\n" + logo + "\n" + tagline + "\n"
-    else:
-        header += "\n" + tagline + "\n"
-    body = (
-        "\n"
-        "     If you have an existing account, connect to it by typing:\n"
-        "          |wconnect <username> <password>|n\n"
-        "     If you need to create an account, type (without the <>'s):\n"
-        "          |wcreate <username> <password>|n\n"
-        "\n"
-        "     If you have spaces in your username, enclose it in quotes.\n"
-        "     Enter |whelp|n for more info. |wlook|n will re-show this screen.\n"
-        "|b==============================================================|n"
-    )
+    bold = "\x1b[1m"
+    
+    header = f"""
+
+
+
+
+{orange}░██████╗░███████╗███╗░░██╗██╗░░░██╗██╗░██████╗░
+██╔════╝░██╔════╝████╗░██║██║░░░██║██║██╔═══██╗
+██║░░██╗░█████╗░░██╔██╗██║██║░░░██║██║██║░░██║
+██║░░██║░██╔══╝░░██║╚██╗██║██║░░░██║██║██║░░██║
+╚██████╔╝███████╗██║░████║╚██████╔╝██║╚██████╔╝
+░╚═════╝░╚══════╝╚═╝░░╚═╝░╚═════╝░╚═╝░╚═════╝░
+
+{gold}═══════════════════════════════════════════════════════════════{reset}
+
+{red}▄██▄▄██▄  ▄██▄  ▄██▄   ▄██▄     ▄██▄  ▄██▄  ▄██▄  ▄██▄   ▄██▄{reset}
+{red}███▀▀▀▀███ ███▀██ ███▀██ ███▀██   ███▀██ ███▀██ ███▀██ ███▀██ ███▀██{reset}
+{red}███    ██ ██      ██  ██ ██  ██   ██      ██  ██ ██  ██ ██  ██ ██{reset}
+{gold}███    ██ ██      ██████ ██████   ██      ██████ ██████ ██████ ██{reset}
+{gold}███    ██ ██      ██  ██ ██  ██   ██      ██  ██ ██  ██ ██  ██ ██{reset}
+{cyan}███    ██ ████▄▄██ ██  ██ ██  ██   ████▄▄██ ██  ██ ██  ██ ██  ██{reset}
+{cyan}▀██▄▄██▀  ▀▀██▄▄██▀ ▀██▄▄██▀ ▀██▄▄██▀  ▀██▄▄██▀ ▀██▄▄██▀ ▀██▄▄██▀{reset}
+
+{gold}═══════════════════════════════════════════════════════════════{reset}
+
+{gold}{bold}⚡  DRAGON BALL FORGED ⚡{reset}
+
+{gold}═══════════════════════════════════════════════════════════════{reset}
+
+{green}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓{reset}
+{green}▓{reset}                                                           {green}▓{reset}
+{green}▓{reset}    {yellow}★  T R A I N   H A R D . . .  ★{reset}                  {green}▓{reset}
+{green}▓{reset}                                                           {green}▓{reset}
+{green}▓{reset}    Fight alongside legends. Transform.{reset}                      {green}▓{reset}
+{green}▓{reset}    Fuse. Become the strongest.{reset}                            {green}▓{reset}
+{green}▓{reset}                                                           {green}▓{reset}
+{green}▓{reset}    {red}▐▌ THE ULTIMATE FIGHTER'S JOURNEY BEGINS ▐▌{reset}       {green}▓{reset}
+{green}▓{reset}                                                           {green}▓{reset}
+{green}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓{reset}
+
+Version {version}
+
+"""
+    
+    body = f"""
+
+{yellow}╔═══════════════════════════════════════════════════════════════╗{reset}
+{yellow}║{reset}                                                               {yellow}║{reset}
+{yellow}║{reset}   {green}To enter the game:{reset}                                        {yellow}║{reset}
+{yellow}║{reset}                                                               {yellow}║{reset}
+{yellow}║{reset}      {gold}→ connect <username> <password>{reset}                           {yellow}║{reset}
+{yellow}║{reset}                                                               {yellow}║{reset}
+{yellow}║{reset}   {green}Create a new character:{reset}                                   {yellow}║{reset}
+{yellow}║{reset}                                                               {yellow}║{reset}
+{yellow}║{reset}      {gold}→ create <username> <password>{reset}                             {yellow}║{reset}
+{yellow}║{reset}                                                               {yellow}║{reset}
+{yellow}║{reset}   {dim}(Your adventure begins the moment you enter!){reset}                {yellow}║{reset}
+{yellow}║{reset}                                                               {yellow}║{reset}
+{yellow}╚═══════════════════════════════════════════════════════════════╝{reset}
+
+{yellow}⚡ POWER LEVEL DOES NOT MATTER... {red}ONLY HEART ⚡{reset}
+"""
     return header + body

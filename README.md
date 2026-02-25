@@ -132,6 +132,10 @@ telnet localhost 4000
 | `quest` | View active quests |
 | `guild` | Manage your guild |
 | `map` | View the world map |
+| `potara <target>` | Initiate Potara fusion (needs earrings) |
+| `dance <target>` | Initiate Metamoran dance fusion |
+| `unfuse` | End your current fusion |
+| `fusion` | Check fusion status |
 
 ---
 
@@ -172,7 +176,7 @@ DBForged/
 ## 🌟 Coming Soon
 
 - [ ] **More zones** — Namek, Frieza's Ship, Otherworld
-- [ ] **Fusions** — Potara earrings, Metamoran dance
+- [x] **Fusions** — Potara earrings, Metamoran dance
 - [ ] **Guild wars** — massive PvP events
 - [ ] **Achievements** — track your legacy
 - [ ] **Leaderboards** — prove you're #1

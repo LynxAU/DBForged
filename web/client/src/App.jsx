@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGameState } from './hooks/useGameState'
 import GameCanvas from './components/GameCanvas/GameCanvas'
 import { PlayerHud, TargetHud } from './components/PlayerHud/PlayerHud'
@@ -16,6 +16,7 @@ function App() {
     entities,
     error,
     connect,
+    reconnect,
     sendCommand,
     login,
     logout
@@ -24,11 +25,12 @@ function App() {
   const [showMenu, setShowMenu] = useState(false)
 
   // Auto-connect on mount
+  // Only auto-connect once on mount — individual sockets handle their own
+  // reconnection internally. Re-triggering connect() on every close would
+  // stack new connections on top of in-flight reconnect attempts.
   useEffect(() => {
-    if (connectionState === 'disconnected') {
-      connect()
-    }
-  }, [connect, connectionState])
+    connect()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -55,8 +57,9 @@ function App() {
   // Show login screen if not logged in
   if (loginState === 'logged_out' || loginState === 'logging_in') {
     return (
-      <Login 
+      <Login
         onLogin={login}
+        onRetry={reconnect}
         error={error}
         connectionState={connectionState}
       />

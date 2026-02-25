@@ -13,6 +13,6 @@ if "%EVENNIA_SERVER_ID%"=="" (
 echo Starting DBForged with Server ID: %EVENNIA_SERVER_ID%
 
 title DBForgedMiniMax-%EVENNIA_SERVER_ID%
-cd /d c:\Games\Dev\DBForged\Agents\MiniMax\live
-set PYTHONPATH=c:\Games\Dev\DBForged\Agents\MiniMax
+cd /d c:\Games\Dev\DBForged\Agents\MiniMax\DBForged
+set PYTHONPATH=c:\Games\Dev\DBForged\Agents\MiniMax\DBForged
 python -m evennia start

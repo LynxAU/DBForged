@@ -124,6 +124,37 @@ class CmdAttack(Command):
         ki_cost = technique.get("ki_cost", 0)
         stamina_cost = technique.get("stamina_cost", 0)
 
+        # ═══════════════════════════════════════════════════════════════════════
+        # COMBO DAMAGE BONUS - Chain attacks for increased damage!
+        # ═══════════════════════════════════════════════════════════════════════
+        combo_count = caller.db.combo_count or 0
+        if combo_count > 0:
+            combo_bonus = min(0.5, combo_count * 0.05)  # Up to 50% bonus at 10+ combo
+            damage = int(damage * (1 + combo_bonus))
+            if combo_count >= 5:
+                caller.msg(f"{{m>>> COMBO x{combo_count}! +{int(combo_bonus*100)}% damage!|{{x")
+        
+        # ═══════════════════════════════════════════════════════════════════════
+        # CHARGE STACK DAMAGE BONUS - Charged attacks hit harder!
+        # ═══════════════════════════════════════════════════════════════════════
+        charge_stacks = caller.db.charge_stacks or 0
+        is_charged_attack = charge_stacks >= 3
+        if charge_stacks >= 3:
+            charge_bonus = 0.25 + (charge_stacks * 0.1)  # 25% at 3 stacks, up to 85% at 9
+            damage = int(damage * (1 + charge_bonus))
+            
+            # ULTIMATE CHARGE at max stacks!
+            if charge_stacks >= 9:
+                caller.msg(f"{{m!!! ULTIMATE CHARGE ATTACK! +{int(charge_bonus*100)}% damage! !!!|{{x")
+            elif charge_stacks >= 7:
+                caller.msg(f"{{m★ POWER CHARGE x{charge_stacks}! +{int(charge_bonus*100)}% damage!★|{{x")
+            else:
+                caller.msg(f"{{cCharged attack! +{int(charge_bonus*100)}% damage!|{{x")
+        
+        # Reset charge stacks after using them (unless it's a charge tech)
+        if charge_stacks >= 3 and technique.get("type") != "charge":
+            caller.db.charge_stacks = 0
+        
         ki = getattr(caller, "db", {}).get("ki_current", 0)
         if ki < ki_cost:
             caller.msg(f"Not enough Ki. Need {ki_cost}.")
@@ -137,7 +168,11 @@ class CmdAttack(Command):
             damage += pl_gap_effect(my_pl, target_pl)
 
             target.db.hp_current = max(0, (target.db.hp_current or 0) - damage)
-
+            
+            # Increment combo counter!
+            caller.db.combo_count = (caller.db.combo_count or 0) + 1
+            caller.db.last_combo_hit = time.time()
+            
             _interrupt_target(target, caller)
             _gain_tech_mastery(caller, tech_name)
 
@@ -145,6 +180,16 @@ class CmdAttack(Command):
                 if hasattr(target, "handle_defeat"):
                     target.handle_defeat(caller, "attack")
                 emit_combat_event(caller, "defeat", {"target": target.key})
+                
+                # Check for Roshi's sparring test quest
+                target_key = target.key.lower() if target.key else ""
+                if "dummy" in target_key or "training" in target_key:
+                    from world.quests import get_quest_status, mark_quest_turn_in_ready
+                    status = get_quest_status(caller, "roshi_sparring_test")
+                    if status.get("accepted") and not status.get("completed"):
+                        ok, msg = mark_quest_turn_in_ready(caller, "roshi_sparring_test")
+                        if ok:
+                            caller.msg("{{g★ Quest complete: You defeated the training dummy! Return to Master Roshi!{{x")
             else:
                 emit_combat_event(caller, "attack", {
                     "target": target.key,

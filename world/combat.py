@@ -89,15 +89,27 @@ def register_beam(character, target, tech_key, base_damage):
     if not script:
         return False
     _ensure_sets(script)
+    
+    # Track charge stacks for beam struggle bonus
+    charge_stacks = character.db.charge_stacks or 0
+    is_charged = charge_stacks >= 3
+    
     script.db.pending_beams.append(
         {
             "attacker": character.id,
             "target": target.id,
             "tech": tech_key,
             "base_damage": max(1, int(base_damage)),
+            "charge_stacks": charge_stacks,
+            "is_charged": is_charged,
             "expires": time.time() + 1.2,
         }
     )
+    
+    # Reset charge stacks after firing a charged beam!
+    if is_charged:
+        character.db.charge_stacks = 0
+    
     return True
 
 
@@ -272,21 +284,63 @@ class CombatHandler(DefaultScript):
             return
         a_pl, _ = a.get_current_pl()
         b_pl, _ = b.get_current_pl()
+        
+        # Base scores
         a_score = a_pl + ((a.db.mastery or 0) * 9) + ((a.db.balance or 0) * 7) + ((a.db.ki_current or 0) * 2)
         b_score = b_pl + ((b.db.mastery or 0) * 9) + ((b.db.balance or 0) * 7) + ((b.db.ki_current or 0) * 2)
-        a_score += (a.db.charge_stacks or 0) * 18
-        b_score += (b.db.charge_stacks or 0) * 18
+        
+        # Charge stack bonuses (beams fired while charged are stronger in struggles!)
+        a_charge = beam_a.get("charge_stacks", 0)
+        b_charge = beam_b.get("charge_stacks", 0)
+        a_score += a_charge * 25  # Each charge stack = +25 to beam struggle score!
+        b_score += b_charge * 25
+        
         winner, loser = (a, b) if a_score >= b_score else (b, a)
         win_gap = max(1.0, abs(a_score - b_score))
-        damage = int(24 + (win_gap**0.35))
-        dealt = loser.apply_damage(damage, source=winner, kind="beam_struggle")
+        
+        # ═══════════════════════════════════════════════════════════════════════
+        # BEAM STRUGGLE PUSH MECHANICS
+        # ═══════════════════════════════════════════════════════════════════════
+        # The bigger the gap, the more push damage the loser takes
+        push_damage = int(10 + (win_gap ** 0.4))
+        
+        # Check for beam_struggle_participation bonuses
+        tech_a = TECHNIQUES.get(beam_a["tech"], {})
+        tech_b = TECHNIQUES.get(beam_b["tech"], {})
+        bias_a = tech_a.get("extras", {}).get("beam_struggle_bias", 0)
+        bias_b = tech_b.get("extras", {}).get("beam_struggle_bias", 0)
+        
+        if winner.id == a.id:
+            push_damage = int(push_damage * (1 + bias_a + (a_charge * 0.1)))
+        else:
+            push_damage = int(push_damage * (1 + bias_b + (b_charge * 0.1)))
+        
+        # Apply push damage to loser
+        dealt = loser.apply_damage(push_damage, source=winner, kind="beam_struggle")
+        
+        # Get tech names for display
+        tech_name = TECHNIQUES[beam_a['tech']]['name'] if beam_a['attacker'] == winner.id else TECHNIQUES[beam_b['tech']]['name']
         
         # EPIC beam struggle messages
-        if win_gap > 50:
+        if win_gap > 80 or (a_charge >= 7 or b_charge >= 7):
+            # MASSIVE OVERPOWER - charged beam smashes through!
+            charge_msg = " (CHARGED BEAM!)" if winner.id == a.id and a_charge >= 7 or winner.id == b.id and b_charge >= 7 else ""
+            a.location.msg_contents(
+                f"|m!!! BEAM OVERLOAD !!!|n {winner.key}'s {tech_name}|c{charge_msg}|n "
+                f"|wSMASHES|through {loser.key}'s defense! "
+                f"|cThe beam strikes directly! |r{dealt}|n damage!"
+            )
+            # Winner gains combo
+            winner.db.combo_count = (winner.db.combo_count or 0) + 1
+            winner.db.last_combo_hit = time.time()
+        elif win_gap > 50:
             # Decisive victory
             winner.location.msg_contents(
-                f"|m>>> BEAM CLASH! >>>|n {winner.key}'s |c{TECHNIQUES[beam_a['tech'] if beam_a['attacker'] == winner.id else beam_b['tech']]['name']}|n |woverpowers|n {loser.key} with overwhelming force! |r{dealt}|n damage!"
+                f"|m>>> BEAM CLASH! >>>|n {winner.key}'s |c{tech_name}|n "
+                f"|woverpowers|n {loser.key} with overwhelming force! |r{dealt}|n push damage!"
             )
+            winner.db.combo_count = (winner.db.combo_count or 0) + 1
+            winner.db.last_combo_hit = time.time()
         elif win_gap > 20:
             # Clear victory
             winner.location.msg_contents(
@@ -302,9 +356,10 @@ class CombatHandler(DefaultScript):
             winner.location,
             winner,
             loser,
-            {"subtype": "beam_struggle", "winner_id": winner.id, "loser_id": loser.id, "damage": dealt},
+            {"subtype": "beam_struggle", "winner_id": winner.id, "loser_id": loser.id, "damage": dealt, "push_gap": win_gap},
         )
         emit_entity_delta(loser)
+        emit_entity_delta(winner)
 
     def _process_passive_tick(self):
         room_lines = {}

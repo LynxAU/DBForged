@@ -551,6 +551,247 @@ class CmdTransform(Command):
         emit_entity_delta(caller)
 
 
+class CmdPotara(Command):
+    """
+    Initiate Potara Fusion with another player.
+    
+    Usage: potara <target>
+    
+    The Potara earrings allow two warriors to merge into one.
+    This fusion is nearly permanent - it will last until you
+    choose to unfuse.
+    """
+    key = "potara"
+    aliases = ["fusion"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        
+        # Check if already fused
+        from world.fusions import is_fused, format_fusion_status, send_fusion_request, has_pending_request
+        
+        if is_fused(caller):
+            caller.msg(format_fusion_status(caller))
+            caller.msg("Use 'unfuse' to end your current fusion.")
+            return
+        
+        if has_pending_request(caller):
+            caller.msg("You already have a pending fusion request. Wait for it to expire or use 'decline fusion' if you're the target.")
+            return
+        
+        if not self.args:
+            caller.msg("Usage: potara <player>")
+            caller.msg("The Potara earrings merge two warriors into one being permanently.")
+            caller.msg("The other player must accept your request.")
+            return
+        
+        # Find target
+        target_name = self.args.strip()
+        target = caller.search(target_name, candidates=caller.location.contents_get(exclude=caller))
+        
+        if not target:
+            caller.msg("Target not found. Make sure they're in the same room.")
+            return
+        
+        # Check if target is a player (has db attributes we need)
+        if not hasattr(target, 'db'):
+            caller.msg(f"{target.key} is not a valid fusion target.")
+            return
+        
+        # Send fusion request (will check requirements internally)
+        ok, msg = send_fusion_request(caller, target, "potara")
+        if not ok:
+            caller.msg(f"|r{msg}|n")
+
+
+class CmdDance(Command):
+    """
+    Initiate Metamoran Dance Fusion with another player.
+    
+    Usage: dance <target>
+    
+    The Metamoran dance fuses two warriors into one for a limited
+    time (30 minutes). This fusion is more powerful than Potara
+    but temporary.
+    """
+    key = "dance"
+    aliases = ["metamoran", "fusion_dance"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        
+        from world.fusions import is_fused, send_fusion_request, format_fusion_status, has_pending_request
+        
+        if is_fused(caller):
+            caller.msg(format_fusion_status(caller))
+            caller.msg("Use 'unfuse' to end your current fusion.")
+            return
+        
+        if has_pending_request(caller):
+            caller.msg("You already have a pending fusion request. Wait for it to expire or use 'decline fusion' if you're the target.")
+            return
+        
+        if not self.args:
+            caller.msg("Usage: dance <player>")
+            caller.msg("The Metamoran dance fuses two warriors for 30 minutes.")
+            caller.msg("The other player must accept your request.")
+            return
+        
+        # Find target
+        target_name = self.args.strip()
+        target = caller.search(target_name, candidates=caller.location.contents_get(exclude=caller))
+        
+        if not target:
+            caller.msg("Target not found. Make sure they're in the same room.")
+            return
+        
+        if not hasattr(target, 'db'):
+            caller.msg(f"{target.key} is not a valid fusion target.")
+            return
+        
+        # Send fusion request
+        ok, msg = send_fusion_request(caller, target, "metamoran")
+        if not ok:
+            caller.msg(f"|r{msg}|n")
+
+
+class CmdUnfuse(Command):
+    """
+    End your current fusion.
+    
+    Usage: unfuse
+    
+    Separates a Potara or Metamoran fusion back into the
+    original two warriors.
+    """
+    key = "unfuse"
+    aliases = ["defuse", "separate"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        
+        from world.fusions import is_fused, unfuse, format_fusion_status
+        
+        if not is_fused(caller):
+            caller.msg("You are not currently fused.")
+            return
+        
+        ok, msg = unfuse(caller)
+        if ok:
+            caller.msg(f"|g{msg}|n")
+            caller.location.msg_contents(
+                f"{caller.key} suddenly splits into two separate beings!",
+                exclude=[caller]
+            )
+        else:
+            caller.msg(f"|r{msg}|n")
+
+
+class CmdFusionStatus(Command):
+    """
+    Check your current fusion status.
+    
+    Usage: fusion
+    
+    Shows information about your current fusion, including
+    partner and remaining time (for Metamoran).
+    """
+    key = "fusion"
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        
+        from world.fusions import is_fused, format_fusion_status, get_fusion_time_remaining, is_metamoran_fusion
+        
+        if not is_fused(caller):
+            caller.msg("You are not currently in a fusion.")
+            caller.msg("Use 'potara <target>' or 'dance <target>' to fuse with another warrior.")
+            return
+        
+        caller.msg(format_fusion_status(caller))
+        
+        # Show additional info
+        from world.fusions import get_fusion_data
+        data = get_fusion_data(caller)
+        if data:
+            caller.msg(f"Fusion type: {data.get('type', 'unknown').title()}")
+            if is_metamoran_fusion(caller):
+                remaining = get_fusion_time_remaining(caller)
+                minutes = remaining // 60
+                seconds = remaining % 60
+                caller.msg(f"Time remaining: |y{minutes}m {seconds}s|n")
+
+
+class CmdAcceptFusion(Command):
+    """
+    Accept a fusion request from another player.
+    
+    Usage: accept fusion
+    """
+    key = "accept"
+    aliases = ["accept fusion"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        args = self.args.strip().lower() if self.args else ""
+        
+        if args and args != "fusion":
+            caller.msg("Usage: accept fusion")
+            return
+        
+        from world.fusions import accept_fusion, has_pending_request
+        
+        if not has_pending_request(caller):
+            caller.msg("You don't have any pending fusion requests.")
+            caller.msg("Use 'potara <player>' or 'dance <player>' to send a fusion request.")
+            return
+        
+        ok, msg = accept_fusion(caller)
+        if not ok:
+            caller.msg(f"|r{msg}|n")
+        # Success messages are handled in accept_fusion
+
+
+class CmdDeclineFusion(Command):
+    """
+    Decline a fusion request from another player.
+    
+    Usage: decline fusion
+    """
+    key = "decline"
+    aliases = ["decline fusion", "refuse"]
+    locks = "cmd:all()"
+    help_category = "DB"
+
+    def func(self):
+        caller = self.caller
+        args = self.args.strip().lower() if self.args else ""
+        
+        if args and args != "fusion":
+            caller.msg("Usage: decline fusion")
+            return
+        
+        from world.fusions import decline_fusion, has_pending_request
+        
+        if not has_pending_request(caller):
+            caller.msg("You don't have any pending fusion requests to decline.")
+            return
+        
+        ok, msg = decline_fusion(caller)
+        if ok:
+            caller.msg(f"|g{msg}|n")
+
+
 class CmdTech(Command):
     key = "tech"
     locks = "cmd:all()"
@@ -3027,3 +3268,157 @@ class CmdGuild(Command):
         
         caller.msg("{{C}}=== Guild Bank ==={{x")
         caller.msg("{{y}}Balance:{{x " + str(guild.get_zeni()) + " zeni")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ROSHI'S ERRAND COMMANDS - For Kame Island Quest Chain
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class CmdGather(Command):
+    """
+    Gather items from the environment for Roshi's quests.
+    
+    Usage: gather crabs   - Collect hermit crabs from the beach
+    Usage: gather debris - Clean up driftwood from the beach
+    """
+    key = "gather"
+    aliases = ["collect"]
+    locks = "cmd:all()"
+    
+    def func(self):
+        caller = self.caller
+        arg = self.args.strip().lower() if self.args else ""
+        
+        # Check location
+        room_name = caller.location.db_key if caller.location and hasattr(caller.location, 'db_key') else str(caller.location)
+        
+        if not arg:
+            caller.msg("Usage: gather crabs |or gather debris")
+            return
+        
+        if arg == "crabs":
+            # Check for quest
+            from world.quests import get_quest_status
+            status = get_quest_status(caller, "roshi_errand_hermit_crabs")
+            if not status.get("accepted"):
+                caller.msg("You don't have any reason to gather crabs. Talk to Master Roshi first!")
+                return
+            if status.get("completed"):
+                caller.msg("You've already completed this task.")
+                return
+            
+            # Track progress
+            progress = caller.db.roshi_crabs_gathered or 0
+            caller.db.roshi_crabs_gathered = progress + 1
+            
+            new_progress = caller.db.roshi_crabs_gathered
+            caller.msg(f"You round up a hermit crab... ({new_progress}/5)")
+            
+            if new_progress >= 5:
+                from world.quests import mark_quest_turn_in_ready
+                ok, msg = mark_quest_turn_in_ready(caller, "roshi_errand_hermit_crabs")
+                if ok:
+                    caller.msg(f"{{g★ Quest complete: Return to Master Roshi to turn in!{{x")
+                    caller.msg("Return to Kame House and type 'quest complete' or talk to Roshi!")
+        
+        elif arg == "debris":
+            # Check for quest
+            from world.quests import get_quest_status
+            status = get_quest_status(caller, "roshi_errand_debris")
+            if not status.get("accepted"):
+                caller.msg("You don't have any reason to gather debris. Talk to Master Roshi first!")
+                return
+            if status.get("completed"):
+                caller.msg("You've already completed this task.")
+                return
+            
+            # Track progress
+            progress = caller.db.roshi_debris_gathered or 0
+            caller.db.roshi_debris_gathered = progress + 1
+            
+            new_progress = caller.db.roshi_debris_gathered
+            caller.msg(f"You pick up driftwood and debris... ({new_progress}/3)")
+            
+            if new_progress >= 3:
+                from world.quests import mark_quest_turn_in_ready
+                ok, msg = mark_quest_turn_in_ready(caller, "roshi_errand_debris")
+                if ok:
+                    caller.msg(f"{{g★ Quest complete: Return to Master Roshi to turn in!{{x")
+        
+        else:
+            caller.msg("You can gather 'crabs' or 'debris'. Maybe other things if you look hard enough...")
+
+
+class CmdFind(Command):
+    """
+    Search for items or creatures in the area.
+    
+    Usage: find turtle   - Search for a lost turtle
+    """
+    key = "find"
+    aliases = ["search", "lookfor"]
+    locks = "cmd:all()"
+    
+    def func(self):
+        caller = self.caller
+        arg = self.args.strip().lower() if self.args else ""
+        
+        if not arg:
+            caller.msg("Usage: find <thing>")
+            return
+        
+        if arg == "turtle":
+            from world.quests import get_quest_status
+            status = get_quest_status(caller, "roshi_errand_turtle")
+            if not status.get("accepted"):
+                caller.msg("You don't have any reason to find a turtle. Talk to Master Roshi first!")
+                return
+            if status.get("completed"):
+                caller.msg("You've already completed this task.")
+                return
+            
+            # Complete the quest
+            from world.quests import mark_quest_turn_in_ready
+            ok, msg = mark_quest_turn_in_ready(caller, "roshi_errand_turtle")
+            if ok:
+                caller.msg("You find Old Turtle's lost child hiding behind a bush!")
+                caller.msg("{{g★ Quest complete: The turtle follows you back! Return to Master Roshi!{{x")
+        else:
+            caller.msg(f"You search for {arg} but find nothing notable...")
+
+
+class CmdMeditate(Command):
+    """
+    Meditate to focus your mind and ki.
+    
+    Usage: meditate
+    
+    Required for some training quests.
+    """
+    key = "meditate"
+    aliases = ["meditation", "focus"]
+    locks = "cmd:all()"
+    
+    def func(self):
+        caller = self.caller
+        
+        # Check for quest
+        from world.quests import get_quest_status
+        status = get_quest_status(caller, "roshi_meditation_training")
+        if not status.get("accepted"):
+            caller.msg("You sit and clear your mind, focusing on your breathing...")
+            caller.msg("You feel a bit more centered.")
+            return
+        if status.get("completed"):
+            caller.msg("You've already completed your meditation training.")
+            return
+        
+        # Do meditation
+        caller.msg("You sit in a meditative pose and focus on your breathing...")
+        caller.msg("Your mind clears and you feel your ki becoming more focused!")
+        
+        from world.quests import mark_quest_turn_in_ready
+        ok, msg = mark_quest_turn_in_ready(caller, "roshi_meditation_training")
+        if ok:
+            caller.msg("{{g★ Quest complete: Your focus is stronger! Return to Master Roshi!{{x")

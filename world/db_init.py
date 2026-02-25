@@ -111,5 +111,27 @@ def build_vertical_slice_world():
             "ki_control": 4,
         },
     )
-
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # FIRST FIGHT - Training Dummy in the safe camp for instant action!
+    # ═══════════════════════════════════════════════════════════════════════
+    _get_or_create_npc(
+        "Training Dummy",
+        "typeclasses.npcs.HostileNPC",
+        plains_camp,
+        "A battered training dummy used for sparring practice. It's covered in scorch marks and dented armor plating. Perfect for beginners!",
+        attrs={
+            "race": "android",
+            "base_power": 60,  # Weak enough for new players to beat!
+            "sprite_id": "npc_training_dummy",
+            "strength": 8,
+            "speed": 5,
+            "balance": 8,
+            "mastery": 1,
+            "ki_control": 1,
+            "npc_role": "sparring",
+            "aggressive": False,  # Won't attack first
+        },
+    )
+    
     return plains_camp
