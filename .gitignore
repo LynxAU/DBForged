@@ -73,6 +73,9 @@ docs/build
 /.github/AGENT_WORKFLOW.md
 /bin/
 
+# Local secret settings - never commit
+live/server/conf/secret_settings.py
+
 # Unapproved root-level files (keep locally, never push)
 /MiniMax.code-workspace
 /README_GRAPHICS.md

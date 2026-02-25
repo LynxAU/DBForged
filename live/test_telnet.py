@@ -9,7 +9,7 @@ if sys.platform == 'win32':
     import codecs
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
-def test_telnet(host='localhost', port=4000, timeout=5):
+def test_telnet(host='localhost', port=5203, timeout=5):
     try:
         print(f"Connecting to {host}:{port}...")
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -4,7 +4,27 @@ Data-driven transformation framework and registry.
 
 from __future__ import annotations
 
+import time
+import random
+
 from world.content_core import build_registry, find_by_key_or_name, make_stub_result
+from world.transformation_unlocks import (
+    check_transformation_roll,
+    check_gravity_training_requirement,
+    check_death_witness_trigger,
+    get_transformation_fail_count,
+    register_transformation_failure,
+    get_gravity_training_count,
+    register_gravity_training,
+    get_near_miss_message,
+    calculate_form_mastery_bonus,
+    get_witness_death_count,
+    check_pl_threshold_requirement,
+    check_absorption_requirement,
+    get_absorption_count,
+    register_absorption,
+    get_android_mark,
+)
 
 
 def _form(
@@ -84,7 +104,12 @@ _FORMS = [
         damage=1.08,
         drain_tick=4,
         drain_tech=3,
-        prereq={"trainer": "king_kai", "quest": "snake_way_endurance", "ki_control_min": 16},
+        prereq={
+            "ki_control_min": 16,
+            # Meta unlock: Roll-based (push yourself)
+            "roll_chance": 0.20,
+            "roll_trigger": {"health_max_pct": 40},
+        },
         visuals={"aura": "aura_kaioken_red", "shader": "heat_distortion", "hair_override": None},
         gameplay={"hp_strain_hook": True, "anti_stall_bias": 0.08},
     ),
@@ -100,7 +125,12 @@ _FORMS = [
         ki_efficiency=0.88,
         drain_tick=2,
         drain_tech=1,
-        prereq={"trainer": "supreme_kai", "quest": "elder_kai_ritual", "mastery_min": 18},
+        prereq={
+            "race": "human",
+            # Meta unlock: Roll-based (push yourself in combat)
+            "roll_chance": 0.10,
+            "roll_trigger": {"health_max_pct": 30},
+        },
         visuals={"aura": "aura_potential_white", "shader": "clean_glow", "hair_override": None},
         gameplay={"cooldown_efficiency_bias": 0.08, "focus_resistance": 0.1},
     ),
@@ -116,7 +146,20 @@ _FORMS = [
         damage=1.08,
         drain_tick=5,
         drain_tech=4,
-        prereq={"race_any": ["saiyan", "half_breed"], "quest": "ssj_breakpoint", "mastery_min": 12},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            # Meta unlock: Roll-based (3%) OR Death Witness trigger (20%)
+            "roll_chance": 0.03,
+            "roll_trigger": {
+                "pl_min": 1000,
+                "rage_min": 25,
+                "health_max_pct": 50,
+            },
+            "witness_death_trigger": True,
+            "witness_chance": 0.20,
+            "pl_min": 1000,
+            "rage_min": 20,
+        },
         visuals={"aura": "aura_ssj_gold", "hair_override": "gold", "shader": "golden_flicker"},
         gameplay={"rage_trigger_bonus": 0.12},
         aliases=["ssj", "supersaiyan"],
@@ -132,7 +175,14 @@ _FORMS = [
         damage=1.13,
         drain_tick=7,
         drain_tech=5,
-        prereq={"race_any": ["saiyan", "half_breed"], "requires_form": "super_saiyan", "form_mastery_min": 15},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            "requires_form": "super_saiyan",
+            "form_mastery_min": 15,
+            # Meta unlock: Roll-based
+            "roll_chance": 0.05,
+            "roll_trigger": {"rage_min": 30},
+        },
         visuals={"aura": "aura_ssj_heavy_gold", "hair_override": "gold", "shader": "thick_flare"},
         gameplay={"guard_chip_bonus": 0.1},
     ),
@@ -147,7 +197,14 @@ _FORMS = [
         damage=1.16,
         drain_tick=8,
         drain_tech=5,
-        prereq={"race_any": ["saiyan", "half_breed"], "requires_form": "super_saiyan", "form_mastery_min": 20},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            "requires_form": "super_saiyan",
+            "form_mastery_min": 20,
+            # Meta unlock: Roll-based
+            "roll_chance": 0.05,
+            "roll_trigger": {"rage_min": 35},
+        },
         visuals={"aura": "aura_ssj_grade3", "hair_override": "gold", "shader": "heavy_bloom"},
         gameplay={"anti_guard_bonus": 0.14, "dash_penalty": 0.12},
     ),
@@ -162,7 +219,14 @@ _FORMS = [
         damage=1.12,
         drain_tick=7,
         drain_tech=5,
-        prereq={"race_any": ["saiyan", "half_breed"], "requires_form": "super_saiyan", "form_mastery_min": 35, "quest": "storm_ascension"},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            "requires_form": "super_saiyan",
+            "form_mastery_min": 35,
+            # Meta unlock: Roll-based
+            "roll_chance": 0.05,
+            "roll_trigger": {"rage_min": 40},
+        },
         visuals={"aura": "aura_ssj2", "hair_override": "gold", "shader": "electric_arcs"},
         gameplay={"combo_bias": 0.12},
         aliases=["ssj2"],
@@ -178,7 +242,15 @@ _FORMS = [
         damage=1.18,
         drain_tick=12,
         drain_tech=8,
-        prereq={"race_any": ["saiyan", "half_breed"], "requires_form": "super_saiyan_2", "form_mastery_min": 45, "ki_control_min": 24},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            "requires_form": "super_saiyan_2",
+            "form_mastery_min": 45,
+            "ki_control_min": 24,
+            # Meta unlock: Roll-based
+            "roll_chance": 0.04,
+            "roll_trigger": {"rage_min": 50},
+        },
         visuals={"aura": "aura_ssj3", "hair_override": "ssj3_long", "shader": "violent_gold"},
         gameplay={"charge_bonus": 0.16, "sustain_penalty": True},
         aliases=["ssj3"],
@@ -195,7 +267,13 @@ _FORMS = [
         ki_efficiency=0.82,
         drain_tick=4,
         drain_tech=3,
-        prereq={"race_any": ["saiyan", "half_breed"], "quest": "god_ki_ritual", "ki_control_min": 30},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            "ki_control_min": 30,
+            # Meta unlock: Requires high ki control + roll
+            "roll_chance": 0.05,
+            "roll_trigger": {"health_max_pct": 30, "rage_min": 35},
+        },
         visuals={"aura": "aura_ssg_red", "hair_override": "red", "shader": "god_flame"},
         gameplay={"sense_clarity_bonus": 0.15, "cooldown_efficiency_bias": 0.1},
         aliases=["ssg"],
@@ -212,7 +290,14 @@ _FORMS = [
         ki_efficiency=0.9,
         drain_tick=8,
         drain_tech=6,
-        prereq={"race_any": ["saiyan", "half_breed"], "requires_form": "super_saiyan_god", "ki_control_min": 36, "quest": "whis_control_trials"},
+        prereq={
+            "race_any": ["saiyan", "half_breed"],
+            "requires_form": "super_saiyan_god",
+            "ki_control_min": 36,
+            # Meta unlock: Requires SSG mastered + roll
+            "roll_chance": 0.04,
+            "roll_trigger": {"rage_min": 40},
+        },
         visuals={"aura": "aura_ssb_blue", "hair_override": "blue", "shader": "god_spark"},
         gameplay={"beam_stability_bonus": 0.12},
         aliases=["ssb", "super_saiyan_blu"],
@@ -228,7 +313,13 @@ _FORMS = [
         damage=1.17,
         drain_tick=9,
         drain_tech=6,
-        prereq={"race": "half_breed", "quest": "hybrid_limit_break", "mastery_min": 28},
+        prereq={
+            "race": "half_breed",
+            "mastery_min": 28,
+            # Meta unlock: Roll-based
+            "roll_chance": 0.04,
+            "roll_trigger": {"rage_min": 45, "health_max_pct": 25},
+        },
         visuals={"aura": "aura_beast_white", "hair_override": "beast_white", "shader": "violet_crackle"},
         gameplay={"counter_bonus": 0.14, "rage_trigger_bonus": 0.08},
     ),
@@ -250,6 +341,8 @@ _FORMS = [
         aliases=["lssj", "legendary"],
     ),
     # Namekian
+    # Note: Namekians don't have rage-based transformations. Their "first transformation"
+    # comes from fusion - see namekian_fusion.py. Giant form requires fusion first.
     _form(
         "giant_namekian",
         "Giant Namekian",
@@ -261,7 +354,11 @@ _FORMS = [
         damage=1.12,
         drain_tick=5,
         drain_tech=2,
-        prereq={"race": "namekian", "quest": "namekian_gianting", "mastery_min": 14},
+        prereq={
+            "race": "namekian",
+            # Namekians must fuse first (require fused flag)
+            "requires_fusion": True,
+        },
         visuals={"aura": "aura_namekian_giant", "shader": "scale_up"},
         gameplay={"reach_bonus": 2, "knockback_resist": 0.12},
     ),
@@ -293,7 +390,13 @@ _FORMS = [
         damage=1.10,
         drain_tick=4,
         drain_tech=2,
-        prereq={"race": "human", "trainer": "master_roshi"},
+        prereq={
+            "race": "human",
+            "trainer": "master_roshi",
+            # Roll-based transformation
+            "roll_chance": 0.10,
+            "roll_trigger": {"health_max_pct": 35},
+        },
         visuals={"aura": "aura_max_power", "shader": "steam"},
         gameplay={"melee_bonus": 0.12, "beam_penalty": 0.05},
     ),
@@ -309,7 +412,12 @@ _FORMS = [
         damage=1.10,
         drain_tick=4,
         drain_tech=2,
-        prereq={"race": "majin", "quest": "majin_body_discipline"},
+        prereq={
+            "race": "majin",
+            # Meta unlock: Roll-based (anger-based)
+            "roll_chance": 0.05,
+            "roll_trigger": {"rage_min": 30},
+        },
         visuals={"aura": "aura_majin_pink", "shader": "rubber_sheen"},
         gameplay={"regen_bonus": 0.12, "guard_recovery_bonus": 0.1},
     ),
@@ -324,7 +432,13 @@ _FORMS = [
         damage=1.14,
         drain_tick=8,
         drain_tech=5,
-        prereq={"race": "majin", "requires_form": "super_majin", "quest": "kid_chaos_trial"},
+        prereq={
+            "race": "majin",
+            "requires_form": "super_majin",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.04,
+            "roll_trigger": {"rage_min": 40},
+        },
         visuals={"aura": "aura_pure_majin", "shader": "chaos_flicker"},
         gameplay={"control_penalty": 0.1, "rush_bonus": 0.14},
     ),
@@ -340,7 +454,12 @@ _FORMS = [
         damage=1.07,
         drain_tick=0,
         drain_tech=0,
-        prereq={"race": "android", "quest": "capsule_lab_calibration"},
+        prereq={
+            "race": "android",
+            # Meta unlock: PL threshold based (Mark upgrade system)
+            "unlock_type": "pl_threshold",
+            "pl_min": 5000,
+        },
         visuals={"aura": "aura_android_blue", "shader": "scanlines"},
         gameplay={"uses_heat_meter_hook": True, "cooldown_bonus": 0.08},
     ),
@@ -356,7 +475,13 @@ _FORMS = [
         ki_efficiency=0.72,
         drain_tick=0,
         drain_tech=0,
-        prereq={"race": "android", "requires_form": "android_overclock", "quest": "reactor_limiters_removed"},
+        prereq={
+            "race": "android",
+            "requires_form": "android_overclock",
+            # Meta unlock: PL threshold based
+            "unlock_type": "pl_threshold",
+            "pl_min": 15000,
+        },
         visuals={"aura": "aura_android_infinite", "shader": "clean_neon"},
         gameplay={"resource_regen_bonus": 0.15},
     ),
@@ -372,7 +497,12 @@ _FORMS = [
         damage=1.08,
         drain_tick=3,
         drain_tech=2,
-        prereq={"race_any": ["biodroid", "bio_android"], "quest": "evolution_catalyst_alpha"},
+        prereq={
+            "race_any": ["biodroid", "bio_android"],
+            # Meta unlock: Absorption-based (absorb NPCs to grow)
+            "unlock_type": "absorption",
+            "absorbs_min": 5,
+        },
         visuals={"aura": "aura_biodroid_stage2", "shader": "cell_sheen"},
         gameplay={"adaptive_resist_hook": True},
     ),
@@ -388,7 +518,13 @@ _FORMS = [
         ki_efficiency=0.86,
         drain_tick=4,
         drain_tech=3,
-        prereq={"race_any": ["biodroid", "bio_android"], "requires_form": "biodroid_stage_two", "quest": "evolution_catalyst_omega"},
+        prereq={
+            "race_any": ["biodroid", "bio_android"],
+            "requires_form": "biodroid_stage_two",
+            # Meta unlock: Absorption-based
+            "unlock_type": "absorption",
+            "absorbs_min": 15,
+        },
         visuals={"aura": "aura_biodroid_perfect", "shader": "green_metallic"},
         gameplay={"copy_tech_bonus_hook": True},
     ),
@@ -403,7 +539,13 @@ _FORMS = [
         damage=1.16,
         drain_tick=7,
         drain_tech=5,
-        prereq={"race_any": ["biodroid", "bio_android"], "requires_form": "biodroid_perfect", "quest": "zenkai_evolution_event"},
+        prereq={
+            "race_any": ["biodroid", "bio_android"],
+            "requires_form": "biodroid_perfect",
+            # Meta unlock: Absorption-based
+            "unlock_type": "absorption",
+            "absorbs_min": 30,
+        },
         visuals={"aura": "aura_biodroid_super_perfect", "shader": "electric_green"},
         gameplay={"revenge_power_hook": True},
     ),
@@ -419,7 +561,12 @@ _FORMS = [
         damage=1.09,
         drain_tick=3,
         drain_tech=2,
-        prereq={"race": "frost_demon", "quest": "imperial_unsealing"},
+        prereq={
+            "race": "frost_demon",
+            # Meta unlock: Roll-based (push yourself)
+            "roll_chance": 0.10,
+            "roll_trigger": {"health_max_pct": 40},
+        },
         visuals={"aura": "aura_frost_true", "shader": "cold_glow"},
         gameplay={"fear_pressure_hook": True},
     ),
@@ -435,7 +582,13 @@ _FORMS = [
         ki_efficiency=0.82,
         drain_tick=4,
         drain_tech=2,
-        prereq={"race": "frost_demon", "requires_form": "frost_demon_true_form", "quest": "final_form_control"},
+        prereq={
+            "race": "frost_demon",
+            "requires_form": "frost_demon_true_form",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.08,
+            "roll_trigger": {"health_max_pct": 30},
+        },
         visuals={"aura": "aura_frost_final", "shader": "violet_cold"},
         gameplay={"death_beam_bonus": 0.16},
     ),
@@ -450,7 +603,13 @@ _FORMS = [
         damage=1.15,
         drain_tick=9,
         drain_tech=6,
-        prereq={"race": "frost_demon", "requires_form": "frost_demon_final_form", "quest": "golden_refinement"},
+        prereq={
+            "race": "frost_demon",
+            "requires_form": "frost_demon_final_form",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.05,
+            "roll_trigger": {"health_max_pct": 20},
+        },
         visuals={"aura": "aura_gold_frost", "shader": "gold_metal"},
         gameplay={"stamina_discipline_hook": True},
     ),
@@ -467,7 +626,12 @@ _FORMS = [
         ki_efficiency=0.86,
         drain_tick=2,
         drain_tech=1,
-        prereq={"race": "grey", "trainer": "jiren_echo"},
+        prereq={
+            "race": "grey",
+            # Meta unlock: Roll-based (push yourself)
+            "roll_chance": 0.10,
+            "roll_trigger": {"health_max_pct": 30},
+        },
         visuals={"aura": "aura_grey_focus", "shader": "heatless_white"},
         gameplay={"control_resistance": 0.15, "counter_bonus": 0.08},
     ),
@@ -482,7 +646,13 @@ _FORMS = [
         damage=1.14,
         drain_tick=7,
         drain_tech=4,
-        prereq={"race": "grey", "requires_form": "meditative_limit", "quest": "tournament_resolve"},
+        prereq={
+            "race": "grey",
+            "requires_form": "meditative_limit",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.05,
+            "roll_trigger": {"health_max_pct": 25},
+        },
         visuals={"aura": "aura_grey_limit_break", "shader": "red_ring"},
         gameplay={"guard_break_resist": 0.14, "stagger_resist": 0.12},
     ),
@@ -499,7 +669,12 @@ _FORMS = [
         ki_efficiency=0.78,
         drain_tick=2,
         drain_tech=1,
-        prereq={"race": "kai", "quest": "sacred_world_attunement"},
+        prereq={
+            "race": "kai",
+            # Meta unlock: Roll-based (push yourself)
+            "roll_chance": 0.15,
+            "roll_trigger": {"health_max_pct": 40},
+        },
         visuals={"aura": "aura_kai_divine", "shader": "halo_particles"},
         gameplay={"support_bonus": 0.2, "seal_bonus": 0.12},
     ),
@@ -515,7 +690,13 @@ _FORMS = [
         ki_efficiency=0.74,
         drain_tick=3,
         drain_tech=1,
-        prereq={"race": "kai", "requires_form": "kai_unsealed", "quest": "kai_guardian_vow"},
+        prereq={
+            "race": "kai",
+            "requires_form": "kai_unsealed",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.08,
+            "roll_trigger": {"health_max_pct": 30},
+        },
         visuals={"aura": "aura_kai_empowered", "shader": "divine_goldwhite"},
         gameplay={"telekinesis_bonus": 0.16, "sense_bonus": 0.18},
     ),
@@ -532,7 +713,12 @@ _FORMS = [
         ki_efficiency=0.84,
         drain_tick=1,
         drain_tech=1,
-        prereq={"race": "truffle", "quest": "tuffle_mech_sync"},
+        prereq={
+            "race": "truffle",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.12,
+            "roll_trigger": {"health_max_pct": 50},
+        },
         visuals={"aura": "aura_tuffle_teal", "shader": "hex_grid"},
         gameplay={"scanner_bonus": 0.2, "trap_bonus": 0.12},
     ),
@@ -547,7 +733,13 @@ _FORMS = [
         damage=1.10,
         drain_tick=5,
         drain_tech=3,
-        prereq={"race": "truffle", "requires_form": "truffle_machine_merge", "quest": "parasite_protocols"},
+        prereq={
+            "race": "truffle",
+            "requires_form": "truffle_machine_merge",
+            # Meta unlock: Roll-based
+            "roll_chance": 0.08,
+            "roll_trigger": {"health_max_pct": 35},
+        },
         visuals={"aura": "aura_tuffle_overdrive", "shader": "infective_noise"},
         gameplay={"debuff_bonus": 0.16, "possession_hook": True},
     ),
@@ -609,25 +801,65 @@ def _check_prereqs(character, form_key, form):
     race = _character_race(character)
     if not _meets_race(form, race):
         return False, f"{form['name']} is not available to your race."
+    
     req = form.get("prerequisites", {})
+    
+    # Check ki_control requirement
     if req.get("ki_control_min") and (character.db.ki_control or 0) < req["ki_control_min"]:
         return False, f"Need Ki Control {req['ki_control_min']}."
+    
+    # Check mastery requirement
     if req.get("mastery_min") and (character.db.mastery or 0) < req["mastery_min"]:
         return False, f"Need Mastery {req['mastery_min']}."
+    
+    # Check requires_form (must have previous form unlocked)
     if req.get("requires_form"):
         known_forms = set(character.db.unlocked_forms or [])
         if req["requires_form"] not in known_forms and character.db.active_form != req["requires_form"]:
             return False, f"Requires {req['requires_form']} unlocked."
+    
+    # Check form_mastery requirement
     if req.get("form_mastery_min"):
         needed_form = req.get("requires_form") or form_key
         mastery = (character.db.form_mastery or {}).get(needed_form, 0)
         if mastery < req["form_mastery_min"]:
             return False, f"Requires {needed_form} mastery {req['form_mastery_min']}."
+    
+    # Check gravity training requirements
+    ok, msg = check_gravity_training_requirement(character, form)
+    if not ok:
+        return False, msg
+    
+    # Check death witness trigger requirements
+    ok, msg = check_death_witness_trigger(character, form)
+    if not ok:
+        return False, msg
+    
+    # Check PL threshold requirements (Android Mark upgrades)
+    ok, msg = check_pl_threshold_requirement(character, form)
+    if not ok:
+        return False, msg
+    
+    # Check absorption requirements (Bio-Android)
+    ok, msg = check_absorption_requirement(character, form)
+    if not ok:
+        return False, msg
+    
+    # Check random roll transformation (for first transformations)
+    # Only runs if unlock_type is "roll" or if roll_chance/roll_trigger is explicitly set
+    unlock_type = req.get("unlock_type")
+    if unlock_type == "roll" or req.get("roll_chance") or req.get("roll_trigger"):
+        ok, msg = check_transformation_roll(character, form_key, form, race)
+        if not ok:
+            return False, msg
+    
+    # Check LSSJ special unlock
     if req.get("special_unlock") == "lssj":
         from world.lssj import can_activate_lssj
 
         ok, msg = can_activate_lssj(character)
         return (ok, msg or "") if not ok else (True, "")
+    
     return True, ""
 
 
@@ -724,7 +956,28 @@ def activate_form(character, form_key, context=None):
         character.db.active_form = form_key
     else:
         character.db.active_form = form_key
+    
+    # Set transformation start time for mastery tracking
+    import time
+    character.db.trans_start_time = time.time()
+    character.db.trans_last_warning = 0  # Reset warning state
+    
+    # Handle Kaioken special start
+    if form_key == "kaioken":
+        activate_kaioken(character)
+    
+    # Show mastery info to player
     mastery = dict(character.db.form_mastery or {})
+    current_mastery = mastery.get(form_key, 0)
+    duration = get_transformation_duration(character, form_key)
+    
+    mastery_msg = ""
+    if current_mastery > 0:
+        if current_mastery >= 100:
+            mastery_msg = f" |x( mastery: {current_mastery}%, can hold indefinitely)"
+        else:
+            mastery_msg = f" |x( mastery: {current_mastery}%, can hold {duration:.0f} seconds)"
+    
     mastery[form_key] = mastery.get(form_key, 0) + 1
     character.db.form_mastery = mastery
     unlocked = set(character.db.unlocked_forms or [])
@@ -736,7 +989,7 @@ def activate_form(character, form_key, context=None):
         caller=character,
         payload={"context": context or {}, "form": form},
     )
-    return True, f"You transform into {form['name']}!", stub
+    return True, f"You transform into {form['name']}!{mastery_msg}", stub
 
 
 def deactivate_form(character, reason="manual"):
@@ -749,6 +1002,11 @@ def deactivate_form(character, reason="manual"):
 
         deactivate_lssj(character, crashed=(reason == "crash"))
     character.db.active_form = None
+    # Clear transformation start time
+    character.db.trans_start_time = None
+    # Handle Kaioken special cleanup
+    if active == "kaioken":
+        deactivate_kaioken(character)
     return True, "You revert to base form.", make_stub_result(
         "form_deactivate",
         active,
@@ -757,14 +1015,334 @@ def deactivate_form(character, reason="manual"):
     )
 
 
+def get_transformation_duration(character, form_key):
+    """
+    Calculate how long a transformation can be held.
+    Base: 60 seconds
+    Bonus: +2.4 seconds per mastery point (max 300s at 100 mastery)
+    """
+    mastery = (character.db.form_mastery or {}).get(form_key, 0)
+    base_duration = 60
+    bonus_per_point = 2.4
+    max_duration = 300  # 5 minutes at max mastery
+    duration = base_duration + (mastery * bonus_per_point)
+    return min(duration, max_duration)
+
+
+def get_transformation_time_remaining(character):
+    """
+    Get remaining transformation time and percentage.
+    Returns (remaining_seconds, percentage_remaining, is_expired)
+    """
+    active = getattr(character.db, "active_form", None)
+    if not active:
+        return 0, 0, False
+    
+    start_time = getattr(character.db, "trans_start_time", None)
+    if not start_time:
+        return 0, 0, False
+    
+    import time
+    elapsed = time.time() - start_time
+    max_duration = get_transformation_duration(character, active)
+    remaining = max(0, max_duration - elapsed)
+    percentage = (remaining / max_duration) * 100 if max_duration > 0 else 0
+    
+    return remaining, percentage, elapsed >= max_duration
+
+
+def check_transformation_warnings(character):
+    """
+    Check if transformation warnings need to be displayed.
+    Returns warning message if threshold crossed, None otherwise.
+    """
+    active = getattr(character.db, "active_form", None)
+    if not active:
+        return None
+    
+    start_time = getattr(character.db, "trans_start_time", None)
+    if not start_time:
+        return None
+    
+    import time
+    elapsed = time.time() - start_time
+    max_duration = get_transformation_duration(character, active)
+    percentage = (elapsed / max_duration) * 100 if max_duration > 0 else 0
+    
+    # Track last warning sent to avoid spam
+    last_warning = getattr(character.db, "trans_last_warning", 0)
+    
+    if percentage >= 90 and last_warning < 90:
+        character.db.trans_last_warning = 90
+        return "Your transformation is slipping! You can't hold this form much longer!"
+    elif percentage >= 80 and last_warning < 80:
+        character.db.trans_last_warning = 80
+        return "Your golden aura flickers..."
+    
+    return None
+
+
+def apply_transformation_mastery_gain(character):
+    """
+    Apply mastery gain while transformed.
+    +1 mastery per 10 seconds while in form.
+    """
+    active = getattr(character.db, "active_form", None)
+    if not active:
+        return 0
+    
+    start_time = getattr(character.db, "trans_start_time", None)
+    if not start_time:
+        return 0
+    
+    import time
+    elapsed = time.time() - start_time
+    
+    # Get current mastery
+    mastery_dict = dict(character.db.form_mastery or {})
+    current_mastery = mastery_dict.get(active, 0)
+    
+    # Calculate mastery gain: +1 per 10 seconds
+    # But cap at 100
+    if current_mastery >= 100:
+        return current_mastery
+    
+    # Calculate how much mastery should have been gained
+    expected_mastery = min(100, int(elapsed / 10))
+    
+    if expected_mastery > current_mastery:
+        mastery_dict[active] = expected_mastery
+        character.db.form_mastery = mastery_dict
+        return expected_mastery
+    
+    return current_mastery
+
+
+def apply_transformation_pl_drain(character):
+    """
+    Apply PL drain while transformed.
+    SSJ1: 1% max PL per minute
+    SSJ2: 2% max PL per minute
+    SSJ3: 3% max PL per minute
+    SSJ4: 4% max PL per minute
+    SSJ5: 5% max PL per minute
+    """
+    active = getattr(character.db, "active_form", None)
+    if not active:
+        return 0
+    
+    # Get drain rate based on form tier
+    form = FORMS.get(active, {})
+    tier = form.get("tier", 1)
+    
+    # Drain rates: 1% at tier 1, up to 5% at tier 5
+    drain_rates = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5}
+    rate = drain_rates.get(tier, 1)
+    
+    # Calculate per-second drain (rate / 60)
+    from world.power import compute_current_pl
+    pl, _ = compute_current_pl(character)
+    max_pl = character.db.base_power * 50  # Approximate max PL
+    
+    # Apply 1 second worth of drain
+    drain = (max_pl * (rate / 100)) / 60
+    
+    # Apply to HP as drain (transformations drain your life force)
+    current_hp = character.db.hp_current or 0
+    if current_hp > 0:
+        character.db.hp_current = max(1, current_hp - int(drain))
+        
+        # Check if too weak to maintain transformation
+        hp_percentage = (character.db.hp_current / (character.db.hp_max or 1)) * 100
+        if hp_percentage < 10:
+            deactivate_form(character, reason="exhausted")
+            return -1  # Signal deactivation
+    
+    return drain
+
+
+def handle_transformation_timeout(character):
+    """
+    Check and handle transformation timeout.
+    Returns True if transformation was reverted due to timeout.
+    """
+    active = getattr(character.db, "active_form", None)
+    if not active:
+        return False
+    
+    remaining, percentage, is_expired = get_transformation_time_remaining(character)
+    
+    if is_expired:
+        deactivate_form(character, reason="timeout")
+        character.msg("|yYour transformation fades away... you can no longer maintain this form.|n")
+        return True
+    
+    return False
+
+
+def get_form_mastery_display(character):
+    """
+    Get formatted display of all form mastery levels.
+    """
+    mastery_dict = character.db.form_mastery or {}
+    unlocked = character.db.unlocked_forms or []
+    
+    lines = ["", "|yTransformation Mastery:|n"]
+    
+    for form_key in unlocked:
+        if form_key not in FORMS:
+            continue
+        form = FORMS[form_key]
+        mastery = mastery_dict.get(form_key, 0)
+        duration = get_transformation_duration(character, form_key)
+        
+        if mastery >= 100:
+            status = "|g[n indefinite]|n"
+        else:
+            status = f"[|g{duration:.0f}s|n hold time]"
+        
+        lines.append(f"  {form['name']}: |c{mastery}%|n {status}")
+    
+    return "\n".join(lines)
+
+
+# =============================================================================
+# KAIOKEN HOLD-DOWN SYSTEM
+# =============================================================================
+
+def get_kaioken_multiplier(character):
+    """
+    Calculate Kaioken multiplier based on hold time.
+    Multiplier = elapsed_seconds * 2 (max x20 at 10s)
+    """
+    active = getattr(character.db, "active_form", None)
+    if active != "kaioken":
+        return 1
+    
+    start_time = getattr(character.db, "kaioken_start_time", None)
+    if not start_time:
+        return 1
+    
+    import time
+    elapsed = time.time() - start_time
+    
+    # Cap at 10 seconds = max multiplier of 20
+    capped_elapsed = min(elapsed, 10)
+    multiplier = int(capped_elapsed * 2)
+    
+    return max(1, multiplier)
+
+
+def get_kaioken_self_damage(character):
+    """
+    Calculate self-damage from Kaioken hold.
+    Damage = elapsed_seconds^2 (1, 4, 9, 16... 100)
+    """
+    active = getattr(character.db, "active_form", None)
+    if active != "kaioken":
+        return 0
+    
+    start_time = getattr(character.db, "kaioken_start_time", None)
+    if not start_time:
+        return 0
+    
+    import time
+    elapsed = time.time() - start_time
+    
+    # Cap at 10 seconds
+    capped_elapsed = min(elapsed, 10)
+    damage = int(capped_elapsed ** 2)
+    
+    return damage
+
+
+def apply_kaioken_drain(character):
+    """
+    Apply self-damage while using Kaioken.
+    Also handles warning messages and force revert on low HP.
+    Returns (damage_dealt, warning_message, should_revert)
+    """
+    active = getattr(character.db, "active_form", None)
+    if active != "kaioken":
+        return 0, None, False
+    
+    # Calculate self-damage
+    damage = get_kaioken_self_damage(character)
+    if damage > 0:
+        character.db.hp_current = max(1, (character.db.hp_current or 1) - damage)
+    
+    # Check for warning (5+ seconds)
+    start_time = getattr(character.db, "kaioken_start_time", None)
+    warning = None
+    if start_time:
+        import time
+        elapsed = time.time() - start_time
+        last_warning = getattr(character.db, "kaioken_last_warning", 0)
+        
+        if elapsed >= 5 and last_warning < 5:
+            character.db.kaioken_last_warning = 5
+            warning = "|rYour body is straining from Kaioken! You can't hold this much longer!|n"
+    
+    # Check if HP is too low
+    hp_percentage = ((character.db.hp_current or 1) / (character.db.hp_max or 1)) * 100
+    should_revert = hp_percentage < 10
+    
+    if should_revert:
+        deactivate_form(character, reason="exhausted")
+        character.msg("|rYour body can't handle the Kaioken strain! You revert to normal form.|n")
+    
+    return damage, warning, should_revert
+
+
+def activate_kaioken(character):
+    """
+    Activate Kaioken - starts the hold timer.
+    """
+    import time
+    character.db.kaioken_start_time = time.time()
+    character.db.kaioken_last_warning = 0
+
+
+def deactivate_kaioken(character):
+    """
+    Deactivate Kaioken - clear the hold timer.
+    """
+    character.db.kaioken_start_time = None
+    character.db.kaioken_last_warning = 0
+    character.db.kaioken_multiplier = 1
+
+
 def apply_form_drain_tick(character, event=None):
     """
     Safe heartbeat stub for future combat/service loop integration.
+    Handles Ki drain, PL drain, mastery gain, timeout warnings, and auto-revert.
     """
     active = getattr(character.db, "active_form", None)
     if not active:
         return make_stub_result("form_tick", "base", caller=character, payload={"active": False})
+    
     form = FORMS.get(active, {})
+    
+    # Check for transformation timeout first
+    if handle_transformation_timeout(character):
+        # Transformation was reverted due to timeout
+        return make_stub_result(
+            "form_tick",
+            active,
+            caller=character,
+            payload={"active": False, "reason": "timeout"},
+        )
+    
+    # Check and send warning messages
+    warning = check_transformation_warnings(character)
+    
+    # Apply mastery gain while transformed
+    mastery = apply_transformation_mastery_gain(character)
+    
+    # Apply PL drain while transformed
+    pl_drain = apply_transformation_pl_drain(character)
+    
+    # Original Ki drain logic
     drain, debug = get_form_tick_drain(character, active)
     mods = debug.get("mods", get_form_modifiers(character, active))
     mastery = debug.get("mastery", (character.db.form_mastery or {}).get(active, 0))
@@ -772,11 +1350,33 @@ def apply_form_drain_tick(character, event=None):
         character.db.ki_current = max(0, (character.db.ki_current or 0) - drain)
     if (character.db.ki_current or 0) <= 0 and active:
         deactivate_form(character, reason="exhausted")
+    
+    # Check HP for transformation maintenance
+    hp_percentage = ((character.db.hp_current or 0) / (character.db.hp_max or 1)) * 100
+    
+    # Apply Kaioken-specific drain (self-damage while holding Kaioken)
+    kaioken_damage = 0
+    kaioken_warning = None
+    kaioken_revert = False
+    if active == "kaioken":
+        kaioken_damage, kaioken_warning, kaioken_revert = apply_kaioken_drain(character)
+    
     return make_stub_result(
         "form_tick",
         active,
         caller=character,
-        payload={"drain": drain, "mastery": mastery, "event": event or {}, "mods": mods},
+        payload={
+            "drain": drain,
+            "pl_drain": pl_drain,
+            "mastery": mastery,
+            "warning": warning,
+            "hp_percentage": hp_percentage,
+            "kaioken_damage": kaioken_damage,
+            "kaioken_warning": kaioken_warning,
+            "kaioken_multiplier": get_kaioken_multiplier(character),
+            "event": event or {},
+            "mods": mods,
+        },
     )
 
 
@@ -797,3 +1397,140 @@ def validate_form_registry():
         if missing:
             errors.append(f"{key}: missing {', '.join(sorted(missing))}")
     return errors
+
+
+# =============================================================================
+# ULTRA INSTINCT DEATH TRIGGER SYSTEM (Category 5)
+# =============================================================================
+
+import random
+
+
+def check_ultra_instinct_trigger(character):
+    """
+    Check if Ultra Instinct should trigger when HP drops below 10%.
+    20% chance to trigger, auto-transforms to highest available form.
+    Returns (triggered: bool, message: str)
+    """
+    # Check if already in UI
+    if getattr(character.db, 'ultra_instinct_active', False):
+        return False, None
+        
+    # Get HP percentage
+    hp_current = character.db.hp_current or 0
+    hp_max = character.db.hp_max or 1
+    hp_percent = (hp_current / hp_max) * 100
+    
+    # Only trigger if below 10%
+    if hp_percent >= 10:
+        return False, None
+    
+    # 20% chance to trigger
+    if random.random() > 0.20:
+        return False, None
+    
+    # Find highest available transformation
+    available_forms = getattr(character.db, 'unlocked_forms', [])
+    if not available_forms:
+        return False, None
+    
+    # Get form tiers
+    form_tiers = {}
+    for form_id, form_data in FORMS.items():
+        if form_id in available_forms:
+            form_tiers[form_id] = form_data.get('tier', 0)
+    
+    if not form_tiers:
+        return False, None
+    
+    # Find highest tier form
+    highest_form = max(form_tiers.items(), key=lambda x: x[1])[0]
+    form_info = FORMS.get(highest_form, {})
+    
+    # Trigger Ultra Instinct
+    character.db.ultra_instinct_active = True
+    character.db.ultra_instinct_form = highest_form
+    character.db.ultra_instinct_start = __import__('time').time()
+    character.db.ultra_instinct_invulnerable = True
+    
+    # Store previous form to restore later
+    character.db.ultra_instinct_previous_form = character.db.active_form
+    
+    # Apply the transformation
+    character.db.active_form = highest_form
+    
+    # Create dramatic message
+    form_name = form_info.get('name', highest_form)
+    message = f"|cYour body moves on instinct! You instantly transform into {form_name}!|n\n"
+    message += f"|yYour attacks are now impossible to predict! You have 1-2 seconds of invulnerability!|n"
+    
+    return True, message
+
+
+def apply_ultra_instinct_boost(character):
+    """
+    Apply 30-second boosted stats duration after Ultra Instinct triggers.
+    """
+    import time
+    
+    if not getattr(character.db, 'ultra_instinct_active', False):
+        return
+    
+    start_time = character.db.ultra_instinct_start
+    elapsed = time.time() - start_time
+    
+    # 30 second duration
+    if elapsed < 30:
+        # Apply boosted stats (1.5x damage, 1.5x speed)
+        character.db.ultra_instinct_damage_boost = 1.5
+        character.db.ultra_instinct_speed_boost = 1.5
+    else:
+        # Duration ended, reset
+        end_ultra_instinct(character)
+
+
+def end_ultra_instinct(character):
+    """
+    End Ultra Instinct effect - reset HP to 50%.
+    """
+    hp_max = character.db.hp_max or 1
+    
+    # Reset HP to 50%
+    character.db.hp_current = int(hp_max * 0.5)
+    
+    # Clear UI flags
+    character.db.ultra_instinct_active = False
+    character.db.ultra_instinct_invulnerable = False
+    character.db.ultra_instinct_damage_boost = 1.0
+    character.db.ultra_instinct_speed_boost = 1.0
+    
+    # Restore previous form if any
+    previous_form = getattr(character.db, 'ultra_instinct_previous_form', None)
+    if previous_form and previous_form != 'ultra_instinct':
+        character.db.active_form = previous_form
+    else:
+        character.db.active_form = None
+    
+    character.msg("|cUltra Instinct fades... Your body returns to normal, but you feel refreshed! HP restored to 50%.|n")
+
+
+def get_ultra_instinct_status(character):
+    """
+    Get Ultra Instinct status for UI display.
+    """
+    if not getattr(character.db, 'ultra_instinct_active', False):
+        return None
+    
+    import time
+    start_time = character.db.ultra_instinct_start
+    elapsed = time.time() - start_time
+    remaining = max(0, 30 - elapsed)
+    
+    return {
+        'active': True,
+        'form': character.db.ultra_instinct_form,
+        'remaining': remaining,
+        'invulnerable': character.db.ultra_instinct_invulnerable,
+        'damage_boost': character.db.ultra_instinct_damage_boost or 1.0,
+        'speed_boost': character.db.ultra_instinct_speed_boost or 1.0,
+    }

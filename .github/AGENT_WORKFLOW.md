@@ -1,8 +1,6 @@
 # DBForged Agent Workflow Policy
 
-Use this as the team-wide agent workflow prompt.
-
----
+Follow this development workflow exactly for DBForged.
 
 ## Core Git Policy
 
@@ -17,9 +15,6 @@ Use this as the team-wide agent workflow prompt.
   - `pyproject.toml`
 - Do not push any other root-level files/folders unless explicitly approved.
 - Never push local/editor/temp files (`*.code-workspace`, scratch scripts, logs, personal notes, temp test files).
-- **Never delete, never upload, never modify your workspace file** (e.g., `MiniMax.code-workspace`). This file is local to each developer and should never be committed or modified.
-
----
 
 ## Development Workflow (Required)
 
@@ -30,8 +25,6 @@ Use this as the team-wide agent workflow prompt.
 - Open a pull request when a feature/fix is stable, reviewable, and functionally complete for that slice.
 - Do not wait for a huge batch before pushing/PRing.
 
----
-
 ## Testing and Validation
 
 - Rigorous in-game testing is required for gameplay/menu/system changes.
@@ -39,8 +32,6 @@ Use this as the team-wide agent workflow prompt.
 - Record exact test commands run and exact outcomes.
 - If something is not tested, say so explicitly.
 - If blocked, document the blocker, impact, and current state.
-
----
 
 ## Commit Message Standard
 
@@ -50,8 +41,6 @@ Use this as the team-wide agent workflow prompt.
 - Prefer messages like:
   - `Add parchment codex menus for techniques and forms`
   - `Fix OOC menu routing so IC codex selections handle numeric input`
-
----
 
 ## Release Notes / Changelog (in `docs/`)
 
@@ -66,21 +55,18 @@ Use this as the team-wide agent workflow prompt.
   - known issues
   - follow-up work
 
----
+## Pull Request Standard
 
-## Pull Request Standard (Same Quality Bar)
+Every PR must include detailed notes:
+- what was built/fixed
+- why
+- scope included / not included
+- exact files/areas touched
+- testing performed (commands + live steps + results)
+- risks/regressions to watch
+- known issues / follow-up items
 
-- Every PR must include detailed notes:
-  - what was built/fixed
-  - why
-  - scope included / not included
-  - exact files/areas touched
-  - testing performed (commands + live steps + results)
-  - risks/regressions to watch
-  - known issues / follow-up items
-- Update PR notes if scope changes before merge.
-
----
+Update PR notes if scope changes before merge.
 
 ## Operational Expectations
 
@@ -89,11 +75,13 @@ Use this as the team-wide agent workflow prompt.
 - "Open PRs for stable, feature-complete slices."
 - "If it changed, document what, why, how tested, and what's next."
 
----
-
 ## Short Enforcement Version
 
 - If it's not in the approved root list, don't commit it.
 - If it isn't tested, say `Not Tested`.
 - If it's functional and validated, push it.
 - If it's a stable slice, open a PR with full notes.
+
+---
+
+**Workspace File Protection**: Never delete, never upload, never modify your workspace file (`MiniMax.code-workspace`). This file is local to each agent and must not be committed to the repository.
