@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useGameState } from './hooks/useGameState'
 import GameCanvas from './components/GameCanvas/GameCanvas'
 import { PlayerHud, TargetHud } from './components/PlayerHud/PlayerHud'
-import Chat from './components/Chat/Chat'
+import { Chat } from './components/Chat/Chat'
 import Login from './components/Login/Login'
 import { MenuPanel } from './components/Menu/Menu'
 
@@ -19,46 +19,37 @@ function App() {
     reconnect,
     sendCommand,
     login,
+    createAccount,
     logout
   } = useGameState()
 
   const [showMenu, setShowMenu] = useState(false)
 
-  // Auto-connect on mount
-  // Only auto-connect once on mount — individual sockets handle their own
-  // reconnection internally. Re-triggering connect() on every close would
-  // stack new connections on top of in-flight reconnect attempts.
+  // Auto-connect once on mount
   useEffect(() => {
     connect()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Escape to close menu
-      if (e.key === 'Escape') {
-        setShowMenu(false)
-      }
-      // M for menu
-      if (e.key === 'm' && !e.ctrlKey && !e.altKey) {
-        setShowMenu(prev => !prev)
-      }
-      // Number keys for quick actions
-      if (!showMenu && e.key >= '1' && e.key <= '5') {
-        const actions = ['attack', 'flee', 'guard', 'charge', 'scan']
+    const onKey = (e) => {
+      if (e.key === 'Escape')                           setShowMenu(false)
+      if (e.key === 'm' && !e.ctrlKey && !e.altKey)    setShowMenu(p => !p)
+      if (!showMenu && e.key >= '1' && e.key <= '4') {
+        const actions = ['attack', 'flee', 'guard', 'charge']
         sendCommand(actions[parseInt(e.key) - 1])
       }
     }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [sendCommand, showMenu])
 
-  // Show login screen if not logged in
+  // ── Login screen ──────────────────────────────────────────────────────────
   if (loginState === 'logged_out' || loginState === 'logging_in') {
     return (
       <Login
         onLogin={login}
+        onCreateAccount={createAccount}
         onRetry={reconnect}
         error={error}
         connectionState={connectionState}
@@ -66,80 +57,90 @@ function App() {
     )
   }
 
-  // Main game view
+  // ── Room / location name from player data ─────────────────────────────────
+  const roomName = player?.room ?? player?.location ?? null
+
+  // ── Main game view ────────────────────────────────────────────────────────
   return (
-    <div className="app">
-      {/* Left Sidebar - Player HUD */}
-      <div className="left-sidebar">
+    <div className="game-viewport">
+
+      {/* ── Canvas fills entire background ── */}
+      <GameCanvas entities={entities} player={player} />
+
+      {/* ── Player HUD — top-left ── */}
+      <div className="hud-overlay hud-player">
         <PlayerHud player={player} />
-        
-        {/* Quick Actions */}
-        <div className="glass-panel" style={{ padding: '16px' }}>
-          <div style={{ marginBottom: '12px', fontWeight: 600 }}>Quick Actions</div>
-          <div className="action-bar">
-            <button className="action-button" onClick={() => sendCommand('attack')}>Attack</button>
-            <button className="action-button" onClick={() => sendCommand('flee')}>Flee</button>
-            <button className="action-button" onClick={() => sendCommand('guard')}>Guard</button>
-            <button className="action-button" onClick={() => sendCommand('charge')}>Charge</button>
-          </div>
+      </div>
+
+      {/* ── Target HUD — top-right ── */}
+      <div className="hud-overlay hud-target">
+        <TargetHud target={target} />
+      </div>
+
+      {/* ── Location pill — top-center ── */}
+      {roomName && (
+        <div className="hud-location">
+          <span className="hud-location-dot" />
+          {roomName}
+        </div>
+      )}
+
+      {/* ── Action bar — bottom-left (above chat) ── */}
+      <div className="hud-actions-wrap">
+        <div className="hud-action-bar">
+          <button className="hud-action-btn hud-action-attack" onClick={() => sendCommand('attack')}>
+            <span className="hud-action-key">1</span>
+            <span className="hud-action-icon">⚔</span>
+            <span className="hud-action-label">Attack</span>
+          </button>
+          <button className="hud-action-btn hud-action-flee" onClick={() => sendCommand('flee')}>
+            <span className="hud-action-key">2</span>
+            <span className="hud-action-icon">💨</span>
+            <span className="hud-action-label">Flee</span>
+          </button>
+          <button className="hud-action-btn hud-action-guard" onClick={() => sendCommand('guard')}>
+            <span className="hud-action-key">3</span>
+            <span className="hud-action-icon">🛡</span>
+            <span className="hud-action-label">Guard</span>
+          </button>
+          <button className="hud-action-btn hud-action-charge" onClick={() => sendCommand('charge')}>
+            <span className="hud-action-key">4</span>
+            <span className="hud-action-icon">⚡</span>
+            <span className="hud-action-label">Charge</span>
+          </button>
         </div>
       </div>
 
-      {/* Center - Canvas + Chat */}
-      <GameCanvas entities={entities} player={player} />
-      <Chat messages={messages} onSendCommand={sendCommand} />
+      {/* ── Chat terminal — bottom-center ── */}
+      <div className="hud-chat-wrap">
+        <Chat messages={messages} onSendCommand={sendCommand} />
+      </div>
 
-      {/* Right Sidebar - Target + Info */}
-      <div className="right-sidebar">
-        <TargetHud target={target} />
-        
-        {/* Menu Toggle */}
-        <button 
-          className="action-button" 
-          onClick={() => setShowMenu(!showMenu)}
-          style={{ background: showMenu ? '#00aeff' : undefined }}
-        >
-          {showMenu ? 'Close Menu' : 'Menu (M)'}
-        </button>
-        
-        {/* Menu Panel */}
+      {/* ── Menu / Logout — bottom-right ── */}
+      <div className="hud-menu-corner">
         {showMenu && (
-          <MenuPanel player={player} onCommand={sendCommand} />
-        )}
-        
-        {/* Mini Map / Compass placeholder */}
-        {!showMenu && (
-          <div className="glass-panel" style={{ padding: '16px', flex: 1 }}>
-            <div style={{ marginBottom: '12px', fontWeight: 600 }}>Compass</div>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(3, 1fr)', 
-              gap: '4px',
-              maxWidth: '120px',
-              margin: '0 auto'
-            }}>
-              <div />
-              <div style={{ textAlign: 'center', color: '#00aeff' }}>N</div>
-              <div />
-              <div style={{ textAlign: 'center', color: '#00aeff' }}>W</div>
-              <div style={{ textAlign: 'center', color: '#ffd700' }}>●</div>
-              <div style={{ textAlign: 'center', color: '#00aeff' }}>E</div>
-              <div />
-              <div style={{ textAlign: 'center', color: '#00aeff' }}>S</div>
-              <div />
-            </div>
+          <div className="hud-menu-panel">
+            <MenuPanel player={player} onCommand={sendCommand} />
           </div>
         )}
-        
-        {/* Logout */}
-        <button 
-          className="action-button" 
-          onClick={logout}
-          style={{ background: '#ff3366', borderColor: '#ff3366' }}
-        >
-          Logout
-        </button>
+        <div className="hud-corner-btns">
+          <button
+            className={`hud-corner-btn${showMenu ? ' active' : ''}`}
+            onClick={() => setShowMenu(p => !p)}
+            title="Menu (M)"
+          >
+            ☰
+          </button>
+          <button
+            className="hud-corner-btn hud-corner-logout"
+            onClick={logout}
+            title="Logout"
+          >
+            ⏻
+          </button>
+        </div>
       </div>
+
     </div>
   )
 }

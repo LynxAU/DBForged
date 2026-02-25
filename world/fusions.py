@@ -17,9 +17,17 @@ PENDING_FUSION_REQUESTS = {}
 
 
 def get_fusion_data(character) -> Optional[dict]:
-    """Get fusion data for a character."""
+    """Get fusion data for a character, restoring from db on cache miss."""
     char_id = character.id
-    return ACTIVE_FUSIONS.get(char_id)
+    if char_id in ACTIVE_FUSIONS:
+        return ACTIVE_FUSIONS[char_id]
+    # Cache miss after restart — restore from persisted db attribute
+    if character.db.is_fused:
+        data = character.db.fusion_data
+        if isinstance(data, dict):
+            ACTIVE_FUSIONS[char_id] = data
+            return data
+    return None
 
 
 def is_fused(character) -> bool:
@@ -120,14 +128,16 @@ def initiate_fusion(fuser1, fuser2, fusion_type: str, duration_minutes: int = No
         "fuser2_name": fuser2.key,
     }
     
-    # Store reference on characters for easy access
+    # Persist fusion state so it survives server restarts
     fuser1.db.fusion_partner = fuser2.key
     fuser1.db.fusion_type = fusion_type
     fuser1.db.is_fused = True
-    
+    fuser1.db.fusion_data = ACTIVE_FUSIONS[fuser1.id]
+
     fuser2.db.fusion_partner = fuser1.key
     fuser2.db.fusion_type = fusion_type
     fuser2.db.is_fused = True
+    fuser2.db.fusion_data = ACTIVE_FUSIONS[fuser2.id]
     
     fusion_name = "Potara Fusion" if fusion_type == "potara" else "Metamoran Fusion"
     duration_text = "" if fusion_type == "potara" else f" ({duration_minutes} minutes)"
@@ -177,6 +187,7 @@ def unfuse(character) -> Tuple[bool, str]:
     character.db.fusion_partner = None
     character.db.fusion_type = None
     character.db.is_fused = False
+    character.db.fusion_data = None
     
     del ACTIVE_FUSIONS[character.id]
     
@@ -202,7 +213,8 @@ def check_and_handle_fusion_expiry(character) -> Tuple[bool, str]:
         character.db.fusion_partner = None
         character.db.fusion_type = None
         character.db.is_fused = False
-        
+        character.db.fusion_data = None
+
         # Try to unfuse partner
         if partner_id and partner_id in ACTIVE_FUSIONS:
             from evennia import search_object
@@ -213,6 +225,7 @@ def check_and_handle_fusion_expiry(character) -> Tuple[bool, str]:
                     partner.db.fusion_partner = None
                     partner.db.fusion_type = None
                     partner.db.is_fused = False
+                    partner.db.fusion_data = None
             del ACTIVE_FUSIONS[partner_id]
         
         return True, "Your Metamoran fusion has expired! The warriors separate."

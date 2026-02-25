@@ -19,27 +19,27 @@ from world.techniques import STARTER_TECHNIQUES
 from .objects import ObjectParent
 
 CHARGEN_STEPS = [
-    ("hair_style", "Hair style", "Enter a hair style (e.g. spiky, short, ponytail):"),
-    ("hair_color", "Hair color", "Enter a hair color (e.g. black, blond, red):"),
-    ("eye_color", "Eye color", "Enter an eye color:"),
-    ("aura_color", "Aura color", "Enter an aura color:"),
-    ("race", "Race", "Choose race:"),
-    ("sex", "Sex", "Choose sex [male/female/other]:"),
+    ("race",       "Race",       "Enter your race:"),
+    ("sex",        "Sex",        "Choose sex [male/female/other]:"),
+    ("hair_style", "Hair Style", "Enter a hair style (e.g. spiky, short, ponytail, bald):"),
+    ("hair_color", "Hair Color", "Enter a hair color (e.g. black, blond, red, white):"),
+    ("eye_color",  "Eye Color",  "Enter an eye color (e.g. black, blue, red, green):"),
+    ("aura_color", "Aura Color", "Enter your aura color (e.g. white, gold, blue, green):"),
 ]
 
 # Descriptive mapping for menu display - maps internal keys to display names
 RACE_DISPLAY_NAMES = {
-    "saiyan": "Saiyan (Warrior race with exponential growth potential)",
-    "human": "Human (Balanced race with diverse abilities)",
-    "namekian": "Namekian (Dragon Clan - can create Dragon Balls)",
-    "frost_demon": "Frost Demon (Arctic conquerors with lethal cryokinesis)",
-    "android": "Android (Mech-organic fusion, limitless potential)",
-    "majin": "Majin (Shape-shifting warriors with regeneration)",
-    "half_breed": "Half-Breed (Hybrid Saiyan/Human latent power)",
-    "biodroid": "Biodroid (Adaptive bio-engineered evolution fighter)",
-    "grey": "Grey (Meditative powerhouse akin to Pride Trooper elites)",
-    "kai": "Kai (Divine being with superior ki attunement)",
-    "truffle": "Truffle/Tuffle (Tech-focused survivors and tactical specialists)",
+    "saiyan":     "|ySaiyan|n      — Warrior race with exponential growth. Zenkai after defeat.",
+    "half_breed": "|yHalf-Breed|n  — Hybrid latent power that erupts beyond expectation.",
+    "human":      "|wHuman|n       — Relentless potential. Mastery and grit exceed all limits.",
+    "namekian":   "|gNamekian|n    — Ancient regenerators with deep spiritual ki.",
+    "majin":      "|mMajin|n       — Malleable, resilient, and completely unpredictable.",
+    "android":    "|cAndroid|n     — Cold efficiency and superior energy management.",
+    "biodroid":   "|mBiodroid|n    — Adaptive predator that evolves to overcome any foe.",
+    "frost_demon":"|bFrost Demon|n — Ruthless rulers with precision and iron control.",
+    "grey":       "|xGrey|n        — Immovable tacticians who dominate by sheer willpower.",
+    "kai":        "|yKai|n         — Divine guardians attuned to sacred ki.",
+    "truffle":    "|cTruffle|n     — Tech specialists who weaponize intellect.",
 }
 
 # Race options for character creation
@@ -130,8 +130,8 @@ class Character(ObjectParent, DefaultCharacter):
         # ═══════════════════════════════════════════════════════════════
         # FIRST LOGIN EXPERIENCE - The "WOW" Factor
         # ═══════════════════════════════════════════════════════════════
-        first_login = getattr(self, 'db.first_login_done', None) is None
-        
+        first_login = not self.attributes.has('first_login_done')
+
         if first_login:
             self.db.first_login_done = True
             # ═══════════════════════════════════════════════════════════════
@@ -143,10 +143,15 @@ class Character(ObjectParent, DefaultCharacter):
                 if kame_start:
                     self.location = kame_start
                     self.msg("|g★ You arrive at Kame Island!|n")
-            except Exception as e:
-                # Fallback - don't break the game if this fails
+            except Exception:
                 pass
-            
+
+            # Run chargen for characters that haven't completed it
+            # (text-client players; web UI players have it pre-filled via setrace)
+            if not self.db.chargen_complete:
+                self.start_chargen()
+                return  # chargen takes over input; skip the welcome splash
+
             self._do_first_login_experience()
         
         # Check if Metamoran fusion has expired while away
@@ -328,8 +333,8 @@ class Character(ObjectParent, DefaultCharacter):
             "aura_color": "white",
         }
         if not self.attributes.has("chargen_complete"):
-            # Default to complete; DBForged uses the OOC menu wizard for creation.
-            self.db.chargen_complete = True
+            # New character — chargen is pending (triggered in at_post_puppet on first login)
+            self.db.chargen_complete = False
             changed = True
         if not self.attributes.has("chargen_active"):
             self.db.chargen_active = False
@@ -368,9 +373,15 @@ class Character(ObjectParent, DefaultCharacter):
 
     def start_chargen(self):
         self.db.chargen_active = True
-        self.db.chargen_step_index = self.db.chargen_step_index or 0
-        self.msg("|yCharacter creation started.|n Answer the prompts to finish setup.")
-        self.msg("|xType `cancel` to keep defaults and finish quickly.|n")
+        self.db.chargen_step_index = 0
+        self.msg("""
+|y╔══════════════════════════════════════════════════════════╗
+║           ★  CHARACTER CREATION  ★                      ║
+╠══════════════════════════════════════════════════════════╣
+║  Answer each prompt to shape your warrior's identity.   ║
+║  Type |wcancel|y at any time to accept all current defaults. ║
+╚══════════════════════════════════════════════════════════╝|n
+""")
         self._show_chargen_prompt()
 
     def _show_chargen_prompt(self):
@@ -378,11 +389,22 @@ class Character(ObjectParent, DefaultCharacter):
         if idx >= len(CHARGEN_STEPS):
             self.finish_chargen()
             return
-        _, label, prompt = CHARGEN_STEPS[idx]
-        current_key = CHARGEN_STEPS[idx][0]
-        current_val = getattr(self.db, current_key, "")
-        preview = colorize(current_val) if "color" in current_key else current_val
-        self.msg(f"|w{label}:|n {prompt} |x[current:|n {preview}|x]|n")
+        key, label, prompt = CHARGEN_STEPS[idx]
+        current_val = getattr(self.db, key, "") or ""
+        step_of = f"Step {idx + 1}/{len(CHARGEN_STEPS)}"
+
+        header = f"|y[ {step_of} — {label} ]|n"
+        self.msg(f"\n{header}")
+
+        # Race step gets a special formatted list
+        if key == "race":
+            self.msg("|xChoose your race — each has unique racial traits:|n\n")
+            for race_key, desc in RACE_DISPLAY_NAMES.items():
+                self.msg(f"  |w{race_key:<12}|n  {desc}")
+            self.msg(f"\n|w{prompt}|n |x(current: {current_val or 'none'})|n")
+        else:
+            preview = colorize(current_val) if "color" in key else current_val
+            self.msg(f"|w{prompt}|n |x(current: {preview or 'none'})|n")
 
     def _normalize_chargen_value(self, key, value):
         value = (value or "").strip()
@@ -433,12 +455,24 @@ class Character(ObjectParent, DefaultCharacter):
         self.db.chargen_active = False
         self.db.chargen_step_index = 0
         self._refresh_sprite_id()
-        self.msg(
-            f"|gCharacter setup complete.|n {self.db.race.title()} / {self.db.sex.title()} / "
-            f"hair {self.db.hair_style} ({colorize(self.db.hair_color)}), "
-            f"eyes {colorize(self.db.eye_color)}, aura {colorize(self.db.aura_color)}."
-        )
+        ensure_character_racials(self)
+        race = (self.db.race or "unknown").replace("_", " ").title()
+        sex  = (self.db.sex  or "other").title()
+        self.msg(f"""
+|g╔══════════════════════════════════════════════════════════╗
+║              ★  WARRIOR FORGED  ★                       ║
+╠══════════════════════════════════════════════════════════╣
+║                                                          ║
+║  Race  : |w{race:<20}|g                              ║
+║  Sex   : |w{sex:<20}|g                              ║
+║  Hair  : |w{self.db.hair_style} ({colorize(self.db.hair_color)}|g)|w{"":>10}|g                  ║
+║  Eyes  : |w{colorize(self.db.eye_color)}|g                                            ║
+║  Aura  : |w{colorize(self.db.aura_color)}|g                                            ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝|n
+""")
         emit_entity_delta(self)
+        self._do_first_login_experience()
 
     def get_current_pl(self):
         return compute_current_pl(self)

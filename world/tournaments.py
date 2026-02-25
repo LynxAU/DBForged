@@ -301,36 +301,6 @@ def _calculate_world_boss_damage(player) -> int:
     return max(1, damage)
 
 
-def damage_world_boss(player_id: str, damage: int = None):
-    """
-    Register damage dealt to the world boss.
-    
-    SECURITY: If damage is None, calculate server-side.
-    If damage is provided, it will be ignored (defense in depth).
-    """
-    if not _world_boss_state["active"]:
-        return {"success": False, "reason": "No boss active"}
-    
-    # SECURITY: Always calculate damage server-side
-    # Ignore any client-provided damage value
-    player = _get_player_for_damage(player_id)
-    if not player:
-        return {"success": False, "reason": "Player not found"}
-    
-    # Calculate damage server-side based on player's actual stats
-    damage = _calculate_world_boss_damage(player)
-    """Spawn a world boss."""
-    _world_boss_state["active"] = True
-    _world_boss_state["boss_name"] = boss_name
-    _world_boss_state["boss_pl"] = boss_pl
-    _world_boss_state["boss_hp"] = boss_pl * 100  # HP based on PL
-    _world_boss_state["boss_max_hp"] = boss_pl * 100
-    _world_boss_state["spawn_time"] = time.time()
-    _world_boss_state["end_time"] = time.time() + WORLD_BOSS_DURATION
-    _world_boss_state["damage_dealt"] = {}
-    _world_boss_state["top_damager"] = None
-    return _world_boss_state
-
 
 def damage_world_boss(player_id: str, damage: int):
     """Register damage dealt to the world boss."""

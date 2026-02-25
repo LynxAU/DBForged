@@ -242,24 +242,7 @@ NPC_DEFINITIONS = {
             "forms": [],
         },
     },
-    "baba": {
-        "name": "Fortuneteller Baba",
-        "role": "trainer",
-        "bio": "A mysterious fortuneteller who knows the secrets of legendary healing items like the Senzu bean.",
-        "location_hint": "Baba's Palace / Crystal Cave",
-        "signature_moves": ["Spirit Fist", "Senzu Bean knowledge"],
-        "dialogue": [
-            "I see... you seek the Senzu bean's power.",
-            "Very rare, very valuable. But I know where one grows.",
-            "Would you like to know?",
-        ],
-        "questlines": ["senzu_quest"],
-        "trainer_rewards": {
-            "techniques": ["senzu_bean"],
-            "forms": [],
-        },
-    },
-    "vegeta": {
+    "vegeta_advanced": {
         "name": "Vegeta",
         "role": "trainer",
         "bio": "Prince of all Saiyans, Vegeta specializes in ruthless pressure, beam superiority, and pride-forged combat discipline.",
@@ -275,7 +258,7 @@ NPC_DEFINITIONS = {
             "forms": ["super_saiyan_grade2", "super_saiyan_blue"],
         },
     },
-    "piccolo": {
+    "piccolo_wasteland": {
         "name": "Piccolo",
         "role": "trainer",
         "bio": "The Namekian master strategist teaches precision, discipline, and control-based offense.",

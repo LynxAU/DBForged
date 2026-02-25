@@ -18,9 +18,27 @@ does what you expect it to.
 def at_initial_setup():
     from evennia import create_script
     from evennia.scripts.models import ScriptDB
+    from evennia.utils import logger
 
     from world.db_init import build_vertical_slice_world
     from world.build_kame_island import build_kame_island
+
+    # ── Validate registries before building the world ──────────────────────
+    from world.techniques import validate_technique_registry
+    from world.forms      import validate_form_registry
+    from world.racials    import validate_racial_registry
+
+    errors = []
+    errors += validate_technique_registry() or []
+    errors += validate_form_registry()       or []
+    errors += validate_racial_registry()     or []
+
+    if errors:
+        for err in errors:
+            logger.log_err(f"[Registry] {err}")
+        logger.log_warn(f"[Registry] {len(errors)} validation error(s) found — check logs before launch.")
+    else:
+        logger.log_info("[Registry] All registries validated OK.")
 
     # Build the initial world
     earth_plains = build_vertical_slice_world()

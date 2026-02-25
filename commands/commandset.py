@@ -13,6 +13,7 @@ from commands.combat_cmds import (
     CmdGuard,
 )
 from commands.character_cmds import (
+    CmdChargenApply,
     CmdDBStats,
     CmdEquipTech,
     CmdFly,
@@ -20,6 +21,7 @@ from commands.character_cmds import (
     CmdPlayerProfile,
     CmdScan,
     CmdSense,
+    CmdSetRace,
     CmdSuppress,
     CmdTech,
     CmdTransform,
@@ -82,3 +84,5 @@ class DBSystemCmdSet(CmdSet):
         self.add(CmdGather())
         self.add(CmdFind())
         self.add(CmdMeditate())
+        self.add(CmdSetRace())
+        self.add(CmdChargenApply())

@@ -68,7 +68,8 @@ def compute_current_pl(character):
                 elif fusion_type == 'metamoran':
                     fusion_factor = 2.8
 
-    suppression_factor = character.db.suppression_factor if character.db.suppressed else 1.0
+    raw_sf = float(character.db.suppression_factor or 1.0) if character.db.suppressed else 1.0
+    suppression_factor = max(0.35, min(1.0, raw_sf))
     combat_readiness = 0.94 if character.db.suppressed else 1.0
     control_efficiency = 1.0 + min(0.12, ki_control * 0.004)
     bruised_factor = 1.0

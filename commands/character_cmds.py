@@ -649,6 +649,110 @@ class CmdFly(Command):
         caller.msg(f"You fly {direction_map.get(direction, direction)}.")
 
 
+class CmdSetRace(Command):
+    """
+    Set your character's race during initial character creation.
+
+    Usage:
+        setrace <race>
+
+    Available races:
+        human, saiyan, half_breed, namekian, majin, android,
+        biodroid, frost_demon, grey, kai, truffle
+
+    This command is only usable once, immediately after account creation.
+    """
+
+    key = "setrace"
+    aliases = ["set_race"]
+    locks = "cmd:all()"
+    help_category = "Character"
+
+    def func(self):
+        from world.racials import PLAYABLE_RACES, ensure_character_racials
+
+        caller = self.caller
+        race = self.args.strip().lower().replace(" ", "_").replace("-", "_")
+
+        # Normalise aliases
+        _aliases = {"bio_android": "biodroid", "tuffle": "truffle", "halfbreed": "half_breed"}
+        race = _aliases.get(race, race)
+
+        if not race:
+            caller.msg(f"Usage: setrace <race>  |  Choices: {', '.join(PLAYABLE_RACES)}")
+            return
+
+        if race not in PLAYABLE_RACES:
+            caller.msg(
+                f"|rUnknown race:|n '{race}'.\n"
+                f"Valid choices: {', '.join(PLAYABLE_RACES)}"
+            )
+            return
+
+        caller.db.race = race
+        ensure_character_racials(caller)
+        # Mark chargen complete so web-UI players aren't prompted again in-game
+        caller.db.chargen_complete = True
+        caller.db.chargen_active   = False
+        display = race.replace("_", " ").title()
+        caller.msg(f"|gYour race has been set to |w{display}|g.|n")
+
+
+class CmdChargenApply(Command):
+    """
+    Apply appearance data sent by the web character creator.
+
+    Usage (internal — sent automatically by the web client after account creation):
+        chargenapply sex=<value> hair_style=<value> hair_color=<value> eye_color=<value> aura_color=<value>
+    """
+
+    key = "chargenapply"
+    locks = "cmd:all()"
+    help_category = "Character"
+
+    _VALID_SEX        = {"male", "female", "other"}
+    _VALID_HAIR_STYLE = {"spiky", "short", "long", "ponytail", "bald", "wild",
+                         "braided", "wavy", "mohawk", "dreadlocks"}
+    _VALID_COLORS     = {"black", "blond", "brown", "red", "white", "blue",
+                         "green", "silver", "gold", "purple", "pink", "orange",
+                         "teal"}
+
+    def func(self):
+        caller = self.caller
+        args   = self.args.strip()
+
+        # Parse key=value pairs
+        params = {}
+        for token in args.split():
+            if "=" in token:
+                k, _, v = token.partition("=")
+                params[k.strip().lower()] = v.strip().lower()
+
+        sex         = params.get("sex",         "other")
+        hair_style  = params.get("hair_style",  "spiky")
+        hair_color  = params.get("hair_color",  "black")
+        eye_color   = params.get("eye_color",   "black")
+        aura_color  = params.get("aura_color",  "white")
+
+        # Validate and clamp to allowed values
+        if sex        not in self._VALID_SEX:         sex        = "other"
+        if hair_style not in self._VALID_HAIR_STYLE:  hair_style = "spiky"
+        if hair_color not in self._VALID_COLORS:      hair_color = "black"
+        if eye_color  not in self._VALID_COLORS:      eye_color  = "black"
+        if aura_color not in self._VALID_COLORS:      aura_color = "white"
+
+        caller.db.sex        = sex
+        caller.db.hair_style = hair_style
+        caller.db.hair_color = hair_color
+        caller.db.eye_color  = eye_color
+        caller.db.aura_color = aura_color
+
+        caller.msg(
+            f"|gAppearance applied:|n "
+            f"{sex} · {hair_style} {hair_color} hair · {eye_color} eyes · {aura_color} aura"
+        )
+
+
 # Export all character commands
 __all__ = [
     "CmdDBStats",
@@ -665,4 +769,6 @@ __all__ = [
     "CmdSense",
     "CmdSuppress",
     "CmdFly",
+    "CmdSetRace",
+    "CmdChargenApply",
 ]

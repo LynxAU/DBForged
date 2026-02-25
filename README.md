@@ -1,9 +1,13 @@
 # 🐉 DBForged ⚔️
 
+![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Stable-success?style=for-the-badge)
+
 <p align="center">
   <img src="https://img.shields.io/badge/Genre-MMORPG/MUD-brightgreen?style=for-the-badge&logo=gamepad" alt="Genre">
   <img src="https://img.shields.io/badge/Theme-Dragon%20Ball%20Inspired-orange?style=for-the-badge&logo=fire" alt="Theme">
   <img src="https://img.shields.io/badge/Engine-Evennia-blue?style=for-the-badge&logo=python" alt="Engine">
+  <img src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react" alt="Frontend">
 </p>
 
 ---
@@ -19,6 +23,16 @@
 - **Technique-based combat** — equip up to 4 techniques and master them through use
 - **Cooldowns & Ki Costs** — manage your energy wisely or face defeat!
 - **Beam Struggles** — when two beams collide, a clash determines the winner! 💥
+- **Combat HUD** — visual attack buttons, technique hotbar, floating damage numbers
+
+### 🖥️ Modern Web Client
+- **React + Vite** — modern, fast, component-based UI
+- **Real-time Combat Interface** — attack buttons, cooldowns, combo counters
+- **Interactive World Map** — zoom, pan, fast travel points
+- **Inventory Management** — drag & drop, equipment slots, item tooltips
+- **Social Hub** — friends, guilds, mail, player profiles
+- **Character Creator** — race selection, name validation, stat preview
+- **Game Canvas** — sprite rendering with animations and effects
 
 ### ⚡ Power Level System
 - **Dynamic Power Levels** that change based on:
@@ -143,7 +157,8 @@ telnet localhost 4000
 
 - **Engine**: [Evennia](https://www.evennia.com/) — the ultimate MUD/MMORPG framework
 - **Language**: Python 🐍
-- **Frontend**: React + Vite (Web Client) ⚛️
+- **Frontend**: [React](https://react.dev/) 18 + [Vite](https://vitejs.dev/) ⚛️
+- **Web Audio**: Web Audio API for sound effects and music
 - **Storage**: JSON-based persistence with database backend
 
 ---
@@ -154,7 +169,7 @@ telnet localhost 4000
 DBForged/
 ├── commands/          # All game commands
 │   ├── combat_cmds.py    # Combat actions
-│   ├── character_cmds.py # Character management
+│   ├── character_cmds.py # Character management, transforms, techniques
 │   ├── social_cmds.py    # Quests, guilds, shops
 │   └── db_commands.py   # Main DB gameplay commands
 ├── typeclasses/       # Game objects (characters, rooms, NPCs)
@@ -163,13 +178,85 @@ DBForged/
 │   ├── power.py          # Power level calculations
 │   ├── techniques.py    # Technique registry
 │   ├── forms.py         # Transformation forms
-│   ├── tournaments.py   # Tournament system
-│   └── quests.py        # Quest system
+│   ├── input_validation.py  # Input sanitization
+│   ├── quests.py        # Quest system
+│   ├── guilds.py        # Guild management
+│   └── tournaments.py   # Tournament system
 ├── web/               # Web client and server
 │   ├── client/          # React frontend
+│   │   ├── src/
+│   │   │   ├── components/   # React components
+│   │   │   │   ├── Combat/      # Combat HUD
+│   │   │   │   ├── GameCanvas/  # Canvas rendering
+│   │   │   │   ├── Inventory/   # Inventory management
+│   │   │   │   ├── Login/       # Login & character creation
+│   │   │   │   ├── Map/         # World map
+│   │   │   │   ├── Menu/        # Character menu
+│   │   │   │   ├── PlayerHud/   # Player status
+│   │   │   │   ├── Social/      # Friends & guilds
+│   │   │   │   └── Chat/        # Chat system
+│   │   │   ├── hooks/          # React hooks
+│   │   │   ├── services/       # API services
+│   │   │   └── styles/          # CSS styling
+│   │   ├── package.json
+│   │   └── vite.config.js
 │   └── static/          # Assets and custom client
 └── server/           # Server configuration
 ```
+
+---
+
+## 🌟 What's New in v1.0.0
+
+### 🚀 React Web Client - Complete Overhaul
+The biggest update in DBForged history! A brand new modern interface:
+
+#### Multi-WebSocket Architecture
+- **4 Dedicated Channels** for optimal performance:
+  - Game commands & text output
+  - Real-time combat state
+  - Map & entity updates
+  - Channels & social
+- **Advanced Networking**: Exponential backoff, message queuing, heartbeat system
+
+#### Beautiful UI
+- **Glassmorphism Design** - Modern frosted glass aesthetic
+- **Animated Login Screen** - Floating ki orbs, character art (Goku & Vegeta)
+- **Server Status** - Real-time connection indicator
+
+#### Game Canvas
+- **Sprite Rendering** with animation support
+- **Tile-Based Worlds** - Multiple location themes:
+  - Kame Island (beach, water, training grounds)
+  - Capsule Corp (research lab, training hall)
+  - King Kai's Planet
+  - Mount Paozu
+  - West City, North City
+  - And many more!
+
+#### Combat Interface
+- **Visual Action Bar** (Hotkeys 1-4):
+  - ⚔️ Attack (1)
+  - 💨 Flee (2)
+  - 🛡️ Guard (3)
+  - ⚡ Charge (4)
+- **Combat HUD**: Cooldowns, combo counters, damage numbers
+- **Technique Hotbar** (1-9 keys)
+
+#### Social Features
+- **Friends List** with online status & location
+- **Guild System**: Roster, ranks, MOTD, bank
+- **Mail System**: In-game messaging
+
+#### Exploration
+- **Interactive World Map** with zoom/pan
+- **Fast Travel Points**
+- **NPC Markers** (quests, shops, trainers)
+
+### 🎮 Enhanced Backend
+- **Input Validation**: Name sanitization, guild validation, quest ID checks
+- **Character Commands**: Transforms, techniques, racials, flying
+- **Social Commands**: Quests, guilds, shops, inventory
 
 ---
 
@@ -180,6 +267,14 @@ DBForged/
 - [ ] **Guild wars** — massive PvP events
 - [ ] **Achievements** — track your legacy
 - [ ] **Leaderboards** — prove you're #1
+- [ ] **World Bosses** — team up for epic battles
+- [ ] **Dragon Balls** — Shenron summons
+
+---
+
+## 📜 Changelog
+
+For a complete list of changes, see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

@@ -1,7 +1,18 @@
 import { useState, useCallback, useRef } from 'react'
 import dbforged from '../services/dbforged'
 
-// Keywords that indicate an Evennia login failure message
+// ── Server message validation ──────────────────────────────────────────────
+// Rejects messages with unexpected shape before they touch React state.
+const COMBAT_MSG_TYPES = new Set(['target_update'])
+const WORLD_MSG_TYPES  = new Set(['player_frame', 'entity_delta'])
+
+function validateServerMessage(data, knownTypes) {
+  if (!data || typeof data !== 'object') return false
+  if (typeof data.type !== 'string')     return false
+  return knownTypes.has(data.type)
+}
+
+// ── Keywords that indicate an Evennia login failure message
 const LOGIN_ERROR_PATTERNS = [
   "that account",
   "doesn't exist",
@@ -29,8 +40,10 @@ export function useGameState() {
   const [error,           setError]           = useState(null)
 
   // Refs so that message callbacks always see current values without stale closures
-  const loginStateRef = useRef('logged_out')
-  const connectedRef  = useRef(false)
+  const loginStateRef  = useRef('logged_out')
+  const connectedRef   = useRef(false)
+  const pendingRaceRef       = useRef(null)  // race selected during character creation
+  const pendingAppearanceRef = useRef(null)  // full appearance from web creator
 
   const _setLoginState = (s) => {
     loginStateRef.current = s
@@ -70,12 +83,32 @@ export function useGameState() {
             // Detect login result when we're waiting for one
             if (loginStateRef.current === 'logging_in') {
               if (isLoginError(raw)) {
+                pendingRaceRef.current       = null
+                pendingAppearanceRef.current = null
                 _setLoginState('logged_out')
                 setError(raw.trim())
                 return // don't surface the raw error text as a chat message
               } else {
                 // Any non-error Evennia response means we're in
                 _setLoginState('logged_in')
+                // If a race was selected during character creation, apply it now
+                if (pendingRaceRef.current) {
+                  const race       = pendingRaceRef.current
+                  const appearance = pendingAppearanceRef.current
+                  pendingRaceRef.current       = null
+                  pendingAppearanceRef.current = null
+                  setTimeout(() => {
+                    dbforged.game.sendCommand(`setrace ${race}`)
+                    if (appearance) {
+                      const ap = appearance
+                      setTimeout(() => {
+                        dbforged.game.sendCommand(
+                          `chargenapply sex=${ap.sex} hair_style=${ap.hair_style} hair_color=${ap.hair_color} eye_color=${ap.eye_color} aura_color=${ap.aura_color}`
+                        )
+                      }, 200)
+                    }
+                  }, 300)
+                }
               }
             }
 
@@ -99,24 +132,22 @@ export function useGameState() {
         // ── Combat socket (no backend yet) ────────────────────────────────
         combat: {
           onMessage: (type, data) => {
-            if (type === 'json' && data.type === 'target_update') setTarget(data)
+            if (type !== 'json') return
+            if (!validateServerMessage(data, COMBAT_MSG_TYPES)) return
+            if (data.type === 'target_update') setTarget(data)
           },
         },
 
         // ── World socket (no backend yet) ─────────────────────────────────
         world: {
           onMessage: (type, data) => {
-            console.log('[World] Received:', type, data)
-            if (type === 'json') {
-              console.log('[World] JSON data:', data)
-              if (data.type === 'player_frame') {
-                console.log('[World] Player frame:', data.entity)
-                setPlayer(data.entity)
-              }
-              if (data.type === 'entity_delta') {
-                console.log('[World] Entity delta:', data.entity)
-                handleEntityUpdate(data.entity)
-              }
+            if (type !== 'json') return
+            if (!validateServerMessage(data, WORLD_MSG_TYPES)) return
+            if (data.type === 'player_frame' && data.entity && typeof data.entity === 'object') {
+              setPlayer(data.entity)
+            }
+            if (data.type === 'entity_delta' && data.entity && typeof data.entity === 'object') {
+              handleEntityUpdate(data.entity)
             }
           },
         },
@@ -155,7 +186,7 @@ export function useGameState() {
     dbforged.game.sendCommand(cmd)
   }, [addMessage])
 
-  // ── login / logout ───────────────────────────────────────────────────────
+  // ── login / logout / createAccount ───────────────────────────────────────
   const login = useCallback((username, password) => {
     if (!connectedRef.current) {
       setError('Not connected. Please wait for the server connection.')
@@ -164,6 +195,18 @@ export function useGameState() {
     setError(null)
     _setLoginState('logging_in')
     dbforged.game.sendCommand(`connect ${username} ${password}`)
+  }, [])
+
+  const createAccount = useCallback((username, password, race, appearance) => {
+    if (!connectedRef.current) {
+      setError('Not connected. Please wait for the server connection.')
+      return
+    }
+    setError(null)
+    pendingRaceRef.current       = race       || null
+    pendingAppearanceRef.current = appearance || null
+    _setLoginState('logging_in')
+    dbforged.game.sendCommand(`create ${username} ${password}`)
   }, [])
 
   const logout = useCallback(() => {
@@ -186,6 +229,7 @@ export function useGameState() {
     reconnect,
     sendCommand,
     login,
+    createAccount,
     logout,
     setTarget,
   }
