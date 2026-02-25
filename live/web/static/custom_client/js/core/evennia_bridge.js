@@ -52,27 +52,30 @@ function bindEvents(callbacks) {
         if (callbacks.onMessage) callbacks.onMessage('text', args);
     });
 
-    // Our custom JSON payloads
+    // Our custom JSON payloads.
+    // Evennia sends OOB data in kwargs (args is always []).
+    // We must use kwargs when args is empty, because [] is truthy in JS.
     evEmitter.on('dbforged_event', (args, kwargs) => {
-        if (callbacks.onMessage) callbacks.onMessage('dbforged_event', args || kwargs);
+        const data = (args && args.length > 0) ? args : kwargs;
+        if (callbacks.onMessage) callbacks.onMessage('dbforged_event', data);
     });
 }
 
 // Send standard MUD text commands upstream
 // Evennia parses these like they came from Telnet
 export function sendInteractiveCommand(cmdString) {
-    if (!isConnected || !evEmitter) {
+    if (!isConnected || !window.Evennia) {
         console.warn("Attempted to send command while disconnected:", cmdString);
         return;
     }
 
     // "text" is the default protocol input type
     // args: [command_string], kwargs: {}
-    evEmitter.emit('text', [cmdString], {});
+    window.Evennia.msg('text', [cmdString], {});
 }
 
 // Example: Send a structured JSON command upstream (Phase 3)
 export function sendJsonCommand(cmdObj) {
-    if (!isConnected || !evEmitter) return;
-    evEmitter.emit('dbforged_cmd', [cmdObj], {});
+    if (!isConnected || !window.Evennia) return;
+    window.Evennia.msg('dbforged_cmd', [cmdObj], {});
 }

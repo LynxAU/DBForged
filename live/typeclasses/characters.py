@@ -109,11 +109,25 @@ class Character(ObjectParent, DefaultCharacter):
         super().at_post_puppet(**kwargs)
         self._ensure_profile_defaults()
         emit_entity_delta(self)
+        try:
+            from world.events import emit_map_data
+            coords = getattr(self.db, "coords", (0, 0, 0))
+            if coords:
+                emit_map_data(self, coords[0], coords[1], radius=7)
+        except Exception:
+            pass
 
     def at_post_move(self, source_location, move_type="move", **kwargs):
         super().at_post_move(source_location, move_type=move_type, **kwargs)
         self._ensure_profile_defaults()
         emit_entity_delta(self)
+        try:
+            from world.events import emit_map_data
+            coords = getattr(self.db, "coords", (0, 0, 0))
+            if coords:
+                emit_map_data(self, coords[0], coords[1], radius=7)
+        except Exception:
+            pass
 
     def execute_cmd(self, raw_string, session=None, **kwargs):
         """

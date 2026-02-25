@@ -8,7 +8,7 @@
   --scouter-green-glow: rgba(50, 255, 100, 0.3);
   --ki-yellow: #ffd74a;
   --danger-red: #ff3366;
-  
+
   /* Backgrounds & Glass */
   --bg-deep: #04080c;
   --glass-bg: rgba(8, 14, 20, 0.75);
@@ -18,7 +18,7 @@
   /* Typography */
   --font-main: 'Inter', system-ui, sans-serif;
   --font-mono: 'Roboto Mono', monospace;
-  
+
   /* Metrics */
   --hud-padding: 16px;
   --radius-sm: 4px;
@@ -36,7 +36,8 @@ body {
   background-color: var(--bg-deep);
   color: #e2e8f0;
   font-family: var(--font-main);
-  overflow: hidden; /* Prevent scrolling, this is a web app */
+  overflow: hidden;
+  /* Prevent scrolling, this is a web app */
   user-select: none;
 }
 
@@ -45,8 +46,10 @@ body {
    ========================================================== */
 #dbf-app {
   display: grid;
-  grid-template-columns: 300px 1fr 300px; /* Left Sidebar, Center, Right Sidebar */
-  grid-template-rows: 1fr 180px; /* Main Area, Action Bar / Chat */
+  grid-template-columns: 300px 1fr 300px;
+  /* Left Sidebar, Center, Right Sidebar */
+  grid-template-rows: 1fr 180px;
+  /* Main Area, Action Bar / Chat */
   height: 100vh;
   width: 100vw;
   position: relative;
@@ -79,7 +82,7 @@ body {
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,174,255,0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 174, 255, 0.05);
   position: relative;
   overflow: hidden;
   z-index: 10;
@@ -89,13 +92,11 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 174, 255, 0.02) 2px,
-    rgba(0, 174, 255, 0.02) 4px
-  );
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 174, 255, 0.02) 2px,
+      rgba(0, 174, 255, 0.02) 4px);
   pointer-events: none;
 }
 
@@ -117,7 +118,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 8px;
 }
 
@@ -155,21 +156,33 @@ body {
 
 .resource-track {
   height: 10px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .resource-fill {
   height: 100%;
-  width: 100%; /* Default filled */
+  width: 100%;
+  /* Default filled */
   transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.fill-hp { background: linear-gradient(90deg, #10b981, #34d399); box-shadow: 0 0 10px rgba(52,211,153,0.5); }
-.fill-ki { background: linear-gradient(90deg, #3b82f6, #60a5fa); box-shadow: 0 0 10px rgba(96,165,250,0.5); }
-.fill-stam { background: linear-gradient(90deg, #f59e0b, #fbbf24); box-shadow: 0 0 10px rgba(251,191,36,0.5); }
+.fill-hp {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+}
+
+.fill-ki {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+}
+
+.fill-stam {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
 
 /* ==========================================================
    SCOUTER HUD (TOP RIGHT) - FOR TARGETS
@@ -181,9 +194,10 @@ body {
   width: 280px;
   padding: 16px;
   border: 1px solid rgba(50, 255, 100, 0.4);
-  background: linear-gradient(135deg, rgba(8,35,16,0.85), rgba(0,18,6,0.95));
-  box-shadow: 0 0 20px var(--scouter-green-glow), inset 0 0 15px rgba(50,255,100,0.05);
-  display: none; /* Hidden until target selected */
+  background: linear-gradient(135deg, rgba(8, 35, 16, 0.85), rgba(0, 18, 6, 0.95));
+  box-shadow: 0 0 20px var(--scouter-green-glow), inset 0 0 15px rgba(50, 255, 100, 0.05);
+  display: none;
+  /* Hidden until target selected */
   z-index: 20;
 }
 
@@ -191,9 +205,18 @@ body {
   color: #ccffda;
   text-shadow: 0 0 5px var(--scouter-green-glow);
 }
-#scouter-hud .power-level { color: #a3ffc2; }
-#scouter-hud .fill-hp { background: linear-gradient(90deg,#24d15d,#6dff9e); }
-#scouter-hud .fill-ki { background: linear-gradient(90deg,#00aeff,#80ddff); }
+
+#scouter-hud .power-level {
+  color: #a3ffc2;
+}
+
+#scouter-hud .fill-hp {
+  background: linear-gradient(90deg, #24d15d, #6dff9e);
+}
+
+#scouter-hud .fill-ki {
+  background: linear-gradient(90deg, #00aeff, #80ddff);
+}
 
 /* ==========================================================
    EVENT LOG / CHAT (BOTTOM LEFT)
@@ -209,7 +232,7 @@ body {
 
 .log-tabs {
   display: flex;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   border-bottom: 1px solid var(--glass-border);
 }
 
@@ -223,11 +246,15 @@ body {
   background: none;
   border: none;
 }
+
 .log-tab.active {
   color: var(--cc-blue);
   box-shadow: inset 0 -2px 0 var(--cc-blue);
 }
-.log-tab:hover:not(.active) { color: #fff; }
+
+.log-tab:hover:not(.active) {
+  color: #fff;
+}
 
 .log-content {
   flex-grow: 1;
@@ -239,14 +266,54 @@ body {
   color: #cbd5e1;
 }
 
-.log-content::-webkit-scrollbar { width: 6px; }
-.log-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-.log-content::-webkit-scrollbar-thumb { background: rgba(0,174,255,0.3); border-radius: 3px; }
+.log-content::-webkit-scrollbar {
+  width: 6px;
+}
 
-.log-entry { margin-bottom: 6px; }
-.log-entry.combat { color: #f87171; }
-.log-entry.system { color: var(--ki-yellow); }
-.log-entry.chat { color: #6ee7b7; }
+.log-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.log-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 174, 255, 0.3);
+  border-radius: 3px;
+}
+
+.log-entry {
+  margin-bottom: 6px;
+}
+
+.log-entry.combat {
+  color: #f87171;
+}
+
+.log-entry.system {
+  color: var(--ki-yellow);
+}
+
+.log-entry.chat {
+  color: #6ee7b7;
+}
+
+.log-input-container {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border-top: 1px solid var(--glass-border);
+}
+
+#cmd-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+}
+
+#cmd-input::placeholder {
+  color: #64748b;
+}
 
 /* ==========================================================
    ACTION BAR (BOTTOM CENTER)
@@ -259,7 +326,8 @@ body {
   align-items: flex-end;
   padding-bottom: var(--hud-padding);
   z-index: 20;
-  pointer-events: none; /* Let clicks pass through empty space */
+  pointer-events: none;
+  /* Let clicks pass through empty space */
 }
 
 .quick-slots {
@@ -271,15 +339,15 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   pointer-events: auto;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 }
 
 .action-slot {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-sm);
-  background: rgba(0,0,0,0.6);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   cursor: pointer;
   transition: all 0.2s;
@@ -311,7 +379,7 @@ body {
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* ==========================================================
@@ -360,8 +428,8 @@ body {
 
 .input-group input {
   width: 100%;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
   padding: 12px;
   color: #fff;
@@ -389,12 +457,12 @@ body {
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 15px rgba(0,174,255,0.3);
+  box-shadow: 0 4px 15px rgba(0, 174, 255, 0.3);
 }
 
 .btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,174,255,0.5);
+  box-shadow: 0 6px 20px rgba(0, 174, 255, 0.5);
   background: linear-gradient(90deg, #0099e6, #33bfff);
 }
 

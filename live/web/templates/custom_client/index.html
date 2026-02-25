@@ -91,6 +91,9 @@
             <div class="log-content" id="log-output">
                 <div class="log-entry system">Initializing DBForged OS...</div>
             </div>
+            <div class="log-input-container">
+                <input type="text" id="cmd-input" placeholder="Enter command..." autocomplete="off" spellcheck="false">
+            </div>
         </div>
 
         <!-- ACTION BAR -->
@@ -128,7 +131,7 @@
     </div>
 
     <!-- Boot Scripts -->
-    <script type="module" src="{% static 'custom_client/js/core/app.js' %}"></script>
+    <script type="module" src="{% static 'custom_client/js/core/app.js' %}?v=5"></script>
 </body>
 
 </html>

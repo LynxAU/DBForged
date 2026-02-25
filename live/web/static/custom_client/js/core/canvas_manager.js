@@ -262,6 +262,37 @@ export const CanvasManager = {
             .sort((a, b) => a.pt.y - b.pt.y);
 
         renderList.forEach(({ entity, pt }) => {
+            // Draw Ki Aura behind the entity
+            if (entity.ki_max > 0 && entity.ki > 0) {
+                const kiPct = entity.ki / entity.ki_max;
+                if (kiPct > 0.05) {
+                    const radius = 30 + (kiPct * 25);
+                    const opacity = 0.2 + (kiPct * 0.4);
+                    const pulse = Math.sin(ts / 150) * 8 * kiPct;
+
+                    const auraStr = (entity.appearance?.aura_color || "blue").toLowerCase();
+                    const auraRGB = {
+                        red: "255, 90, 90", blue: "103, 183, 255", green: "115, 255, 155",
+                        yellow: "255, 215, 74", purple: "210, 128, 255", white: "246, 246, 255",
+                        black: "108, 108, 108"
+                    }[auraStr] || "103, 183, 255";
+
+                    this.ctx.save();
+                    this.ctx.globalCompositeOperation = "screen";
+                    const gradient = this.ctx.createRadialGradient(pt.x, pt.y - 30, radius * 0.1, pt.x, pt.y - 30, radius + pulse);
+                    gradient.addColorStop(0, `rgba(${auraRGB}, ${opacity})`);
+                    gradient.addColorStop(0.5, `rgba(${auraRGB}, ${opacity * 0.5})`);
+                    gradient.addColorStop(1, `rgba(${auraRGB}, 0)`);
+
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    // Draw aura taller than wide (pill shape matching DBZ auras)
+                    this.ctx.ellipse(pt.x, pt.y - 30, (radius + pulse) * 0.8, (radius + pulse) * 1.3, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+
             const player = this.getEntityPlayer(entity.id);
             if (player) {
                 player.update(dt);

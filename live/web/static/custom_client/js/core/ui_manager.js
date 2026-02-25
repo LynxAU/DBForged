@@ -52,11 +52,19 @@ export function logEvent(type, message) {
     const entry = document.createElement('div');
     entry.className = `log-entry ${type}`;
 
-    // Add timestamp
+    // Build timestamp span
     const d = new Date();
-    const ts = `[${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}]`;
+    const ts = `[${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}] `;
+    const tsSpan = document.createElement('span');
+    tsSpan.className = 'log-ts';
+    tsSpan.textContent = ts;
 
-    entry.textContent = `${ts} ${message}`;
+    // Build message span using innerHTML so Evennia's HTML color spans render
+    const msgSpan = document.createElement('span');
+    msgSpan.innerHTML = message;
+
+    entry.appendChild(tsSpan);
+    entry.appendChild(msgSpan);
     container.appendChild(entry);
 
     // Auto scroll

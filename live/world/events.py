@@ -41,7 +41,7 @@ def emit_event_room(room, event_type, payload, exclude=None):
     if not _client_events_enabled():
         return
     packet = {"type": event_type, "ts": round(time.time(), 3), **payload}
-    room.msg_contents(dbforged_event=packet, exclude=exclude or [])
+    room.msg_contents(text="", dbforged_event=packet, exclude=exclude or [])
 
 
 def emit_entity_delta(entity, recipients=None):
