@@ -17,13 +17,7 @@ from world.combat import engage, disengage, register_beam, start_charging, stop_
 from world.color_utils import aura_phrase, colorize
 from world.content_unlocks import get_trainer_reward_map, get_unlock_label
 from world.events import emit_combat_event, emit_entity_delta, emit_vfx
-from world.forms import FORMS, activate_form, deactivate_form, get_form, list_forms_for_race, get_form_mastery_display, get_transformation_duration
-from world.beam_clash import BeamClash, get_beam_clash, start_beam_clash, end_beam_clash
-from world.spirit_bomb import get_spirit_bomb, clear_spirit_bomb, FlurryAttack
-from world.namekian_fusion import check_fusion_on_kill, accept_fusion, decline_fusion, unfuse, get_fusion_status
-from world.mobility import timeskip, position_swap, save_teleport_location, teleport_to_location, instant_transmission, get_saved_locations
-from world.dragon_balls import add_dragon_ball, can_summon_shenron, summon_shenron, make_wish, get_dragon_ball_status
-from world.planet_cracker import use_planet_cracker, can_use_planet_cracker, train_with_npc, get_available_trainers, learn_technique_from_trainer, TRAINERS
+from world.forms import FORMS, activate_form, deactivate_form, get_form, list_forms_for_race
 from world.lssj import escalate_lssj, get_lssj_ui_state, train_lssj_control
 from world.npc_content import NPC_DEFINITIONS, get_npc_definition
 from world.power import pl_gap_effect
@@ -862,41 +856,12 @@ class CmdSense(Command):
     help_category = "DB"
 
     def func(self):
-        from world.ki_sense_training import (
-            KiSenseCommand, start_training, sense_ki, get_training_status, stop_training
-        )
-        
         caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        # Handle training commands
-        if args == "training":
-            success, msg = start_training(caller)
-            caller.msg(msg if success else f"|r{msg}|n")
-            return
-        
-        if args == "status" or args == "train":
-            caller.msg(get_training_status(caller))
-            return
-        
-        if args == "stop" or args == "end" or args == "quit":
-            success, msg = stop_training(caller)
-            caller.msg(msg if success else f"|r{msg}|n")
-            return
-        
-        # Check if in training mode
-        if caller.db.get('ki_sense_training'):
-            success, msg = sense_ki(caller)
-            caller.msg(msg if success else f"|r{msg}|n")
-            return
-        
-        # Original sense functionality
         if (caller.db.ki_control or 0) < 15:
             caller.msg("Your ki control is too low to sense energy directly (need 15).")
             return
         if not self.args:
             caller.msg("Usage: sense <target or room>")
-            caller.msg("Or use 'sense training' to start Ki Sense training!")
             return
         arg = self.args.strip().lower()
         if arg == "room":
@@ -1006,111 +971,6 @@ class CmdForms(Command):
                 f"LSSJ: stage={lssj.get('stage')} rage={lssj.get('rage')} control={lssj.get('control')} "
                 f"PLx={lssj.get('pl_factor',1.0):.2f}"
             )
-
-
-class CmdMastery(Command):
-    """
-    Display transformation mastery levels.
-    
-    Usage: mastery [form_name]
-    
-    Shows your mastery level for each transformation form you've unlocked.
-    Higher mastery means you can hold the transformation longer.
-    At 100% mastery, you can hold the form indefinitely.
-    """
-    key = "mastery"
-    aliases = ["transmastery", "formmastery"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if args:
-            # Show specific form mastery
-            from world.forms import FORMS, get_transformation_duration
-            if args not in FORMS:
-                caller.msg(f"Unknown form: {args}")
-                return
-            
-            mastery = (caller.db.form_mastery or {}).get(args, 0)
-            duration = get_transformation_duration(caller, args)
-            
-            if mastery >= 100:
-                caller.msg(f"{FORMS[args]['name']}: |c100%|n (can hold indefinitely)")
-            else:
-                caller.msg(f"{FORMS[args]['name']}: |c{mastery}%|n (can hold {duration:.0f} seconds)")
-        else:
-            # Show all form mastery
-            display = get_form_mastery_display(caller)
-            caller.msg(display)
-            
-            # Also show current transformation time remaining if active
-            active = caller.db.active_form
-            if active:
-                from world.forms import get_transformation_time_remaining
-                remaining, percentage, _ = get_transformation_time_remaining(caller)
-                if remaining > 0:
-                    caller.msg(f"\n|cCurrent form:|n {active} - |y{remaining:.0f}s|n remaining ({percentage:.0f}%)")
-
-
-class CmdPush(Command):
-    """
-    Push energy into a beam clash.
-    
-    Usage: push
-    
-    When in a beam clash, use this command to push energy into the struggle.
-    Timing matters - push when the beam is close to your opponent for maximum effect.
-    """
-    key = "push"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
-        # Check if there's an active beam clash in the room
-        if not caller.location:
-            caller.msg("You need to be in a room to push.")
-            return
-        
-        clash = get_beam_clash(caller.location)
-        if not clash:
-            caller.msg("There's no beam clash happening right now.")
-            return
-        
-        # Check if caller is part of this clash
-        if caller != clash.p1 and caller != clash.p2:
-            caller.msg("You're not part of this beam clash!")
-            return
-        
-        # Calculate timing bonus (closer to opponent = bigger bonus)
-        timing_bonus = 0
-        if caller == clash.p1 and clash.position < 40:
-            timing_bonus = 5  # Good timing when pushing toward enemy
-        elif caller == clash.p2 and clash.position > 60:
-            timing_bonus = 5  # Good timing when pushing toward enemy
-        
-        # Push!
-        result = clash.push(caller, timing_bonus)
-        
-        if result == "continuing":
-            caller.msg(f"|cYou push energy into the beam!|n\n{clash.get_position_display()}")
-            # Also show to room
-            caller.location.msg_contents(
-                f"{caller.key} pushes energy into the beam!",
-                exclude=caller
-            )
-        elif result == "p1_wins" and caller == clash.p1:
-            caller.msg("|gYou overwhelm the beam and strike your opponent!|n")
-        elif result == "p2_wins" and caller == clash.p2:
-            caller.msg("|gYou overwhelm the beam and strike your opponent!|n")
-        elif result == "p1_wins":
-            caller.msg("|rYour beam is overwhelmed!|n")
-        elif result == "p2_wins":
-            caller.msg("|rYour beam is overwhelmed!|n")
 
 
 class CmdLSSJ(Command):
@@ -1489,6 +1349,8 @@ class CmdHelpDB(Command):
             "map\n"
             "logo_test\n"
             "helpdb\n"
+            "teleport <x> <y> [z]\n"
+            "n/s/e/w/u/d (spatial grid movement)\n"
             "\nNotes: Combat has passive 1s ticks. Beams can collide into beam struggles if exchanged quickly."
         )
 
@@ -1503,92 +1365,34 @@ class CmdMap(Command):
 
     def func(self):
         caller = self.caller
+        
+        # Scouting support: map <x> <y>
+        args = self.args.strip().split()
+        if len(args) >= 2:
+            try:
+                scout_x = int(args[0])
+                scout_y = int(args[1])
+                from world.map_utils import render_map
+                map_str = render_map(scout_x, scout_y, radius=5, target_obj=caller)
+                caller.msg(f"|y[|c Scout View: {scout_x}, {scout_y} |y]|n\n" + map_str)
+                return
+            except ValueError:
+                pass
+
         loc = caller.location
         if not loc:
             caller.msg("You are nowhere.")
             return
 
-        if "Kame Island" in loc.tags.get(category="zone", return_list=True) or "Kame Island" in loc.key:
-            self._render_kame_map(loc)
-        else:
-            caller.msg("No map is available for your current area.")
-
-    def _render_kame_map(self, loc):
-        is_indoor = "Kame House" in loc.key
-
-        base_indoor = """
-==============================================================================
-                               |y[|c KAME HOUSE |y]|n 
-
-               |x+---------------------+|n                                |x+---------------------+|n
-               |x||n       |cKITCHEN|n       |x||n                                |x||n      |cUPSTAIRS|n       |x||n
-               |x||n         {k}         |x||n                                |x||n       |cBEDROOM|n       |x||n
-               |x||n                     |x||n                                |x||n         {b}         |x||n
-               |x+---------+   +---------+|n                                |x||n                     |x||n
-                         |   |                                          |x+---------------------+|n
-  |x+------------+|n         |   |
-  |x||n  |cBATHROOM|n  |x+---------+   +---------+|n
-  |x||n    {a}           |cLIVING ROOM|n     |x||n
-  |x||n                      {l}         |x||n
-  |x+------------+|x+---------+   +---------+|n
-                         |   |
-               |x+---------+   +---------+|n
-               |x||n        |cPORCH|n        |x||n
-               |x||n         {p}         |x||n
-               |x+-----------------------+|n
-
-==============================================================================
-"""
-
-        base_outdoor = """
-==============================================================================
-                               |y[|c KAME ISLAND |y]|n                                
-
-         |B≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈|n           
-      |B≈  ≈  ≈  ≈  ≈  ≈|n  |y.  .  .  .  .  .  .  .  .  .|n  |B≈  ≈  ≈  ≈  ≈  ≈|n       
-   |B≈  ≈  ≈  ≈|n  |y.  .  . {n} .  .  .  . {N} .  .  .  .  . |n|B≈  ≈  ≈  ≈|n       
-      |B≈  ≈|n  |y.  .  .  |G,  .  ,  .  ,  .  ,  .  ,  .  ,  .|y  .  .  .|n|B≈  ≈|n          
-   |B≈  ≈|n  |y.  .  .  . |G.  ,  .  |W+-------+|G  .  ,  .  ,  .  , |y .  .  .|n |B≈  ≈|n       
-|B≈ {w} ≈|n |y. {W} |n|G ,  .  ,  . |RKAME   |W||G  .  ,  .  ,  .  ,  |y. {E} .|n|B≈ {e} ≈|n
-   |B≈  ≈|n  |y.  .  .  . |G.  ,  .  |W| HOUSE ||G  .  ,  .   |g\\|G   , |y .  .  .|n |B≈  ≈|n       
-      |B≈  ≈|n  |y.  .  .  |G,  .  ,  |W+- |w{p}|W -+|G  .  ,  . |g(`)|G .|y  .  .  .|n  |B≈  ≈|n          
-   |B≈  ≈  ≈  ≈|n  |y.  .  .  .  .  .  . {S} .  .  .  .  .  .  .|n  |B≈  ≈  ≈  ≈|n       
-      |B≈  ≈  ≈  ≈  ≈  ≈|n  |y.  .  .  .  .  .  .  .  .  .|n  |B≈  ≈  ≈  ≈  ≈  ≈|n       
-         |B≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈ {s} ≈  ≈  ≈  ≈  ≈  ≈  ≈  ≈|n           
-
-==============================================================================
-"""
-
-        n = {k: "|Y(O)|n" for k in [
-            "n", "s", "e", "w", 
-            "N", "S", "E", "W", 
-            "p", "k", "a", "l", "b"
-        ]}
+        coords = getattr(caller.db, "coords", (0, 0, 0))
+        from world.map_utils import render_map
+        map_str = render_map(coords[0], coords[1], radius=7, target_obj=caller)
         
-        curr = loc.key
-        marker = "|r(@)|n"
-        
-        if "Ocean" in curr:
-            desc = loc.db.desc.lower() if loc.db.desc else ""
-            if "sits to the north" in desc: n["s"] = marker
-            elif "sits to the south" in desc: n["n"] = marker
-            elif "sits to the west" in desc: n["e"] = marker
-            elif "sits to the east" in desc: n["w"] = marker
-            else: n["n"] = marker
-        elif "North" in curr or "Rear" in curr: n["N"] = marker
-        elif "South" in curr: n["S"] = marker
-        elif "East" in curr: n["E"] = marker
-        elif "West" in curr: n["W"] = marker
-        elif "Kitchen" in curr: n["k"] = marker
-        elif "Bathroom" in curr: n["a"] = marker
-        elif "Living" in curr: n["l"] = marker
-        elif "Porch" in curr: n["p"] = marker
-        elif "Bedroom" in curr: n["b"] = marker
-
-        if is_indoor:
-            self.caller.msg(base_indoor.format(**n).strip("\n"))
-        else:
-            self.caller.msg(base_outdoor.format(**n).strip("\n"))
+        zone_name = "Unknown Area"
+        if loc.tags.get(category="zone"):
+            zone_name = loc.tags.get(category="zone")
+            
+        caller.msg(f"|y[|c {zone_name} |y]|n |w({coords[0]}, {coords[1]})|n\n" + map_str)
 
 
 class CmdLogoTest(Command):
@@ -1656,1152 +1460,123 @@ class CmdLogout(Command):
             account.msg(account.at_look(target=account.characters, session=session), session=session)
 
 
-class CmdSpiritBomb(Command):
+class CmdGridMove(Command):
     """
-    Charge and release a Spirit Bomb - room-destroying energy orb.
+    Move in a cardinal direction on the spatial grid.
     """
-    key = "spiritbomb"
-    aliases = ["sb"]
+
+    key = "north"
+    aliases = ["south", "east", "west", "up", "down", "n", "s", "e", "w", "u", "d"]
     locks = "cmd:all()"
     help_category = "DB"
 
     def func(self):
         caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        # Check ki control requirement
-        if (caller.db.ki_control or 0) < 25:
-            caller.msg("Your ki control is too low to form a Spirit Bomb (need 25).")
+        direction = self.cmdstring.lower()
+        # Mapping for vectors
+        vectors = {
+            "north": (0, 1, 0),
+            "n": (0, 1, 0),
+            "south": (0, -1, 0),
+            "s": (0, -1, 0),
+            "east": (1, 0, 0),
+            "e": (1, 0, 0),
+            "west": (-1, 0, 0),
+            "w": (-1, 0, 0),
+            "up": (0, 0, 1),
+            "u": (0, 0, 1),
+            "down": (0, 0, -1),
+            "d": (0, 0, -1),
+        }
+
+        vector = vectors.get(direction)
+        if not vector:
+            caller.msg("Invalid direction.")
             return
-        
-        # Get or create spirit bomb
-        sb = get_spirit_bomb(caller)
-        
-        if args in {"charge", "start", "begin"}:
-            # Start charging
-            if sb.is_charging:
-                caller.msg("You are already charging a Spirit Bomb!")
-                return
-            sb.start_charge()
-            caller.msg("|rYou begin gathering energy for a Spirit Bomb...|n")
-            # Announce to room
-            caller.location.msg_contents(
-                f"{caller.key} begins gathering energy, a glowing orb forming in their hands!",
-                exclude=caller
-            )
-            
-        elif args in {"release", "fire", "launch"}:
-            # Release the Spirit Bomb
-            if not sb.is_charging:
-                caller.msg("You aren't charging a Spirit Bomb!")
-                return
-            
-            # Calculate damage
-            charge_time = 20  # Default if just typed release
-            damage = sb.calculate_damage(charge_time)
-            
-            # Get targets in room
-            targets = []
-            if caller.location:
-                for obj in caller.location.contents:
-                    if obj != caller and hasattr(obj, 'take_damage'):
-                        targets.append(obj)
-            
-            # Apply AoE damage
-            results = []
-            for target in targets:
-                actual = target.take_damage(damage, 'spirit_bomb')
-                results.append(f"{target.key} takes {actual} damage!")
-            
-            # Clear bomb
-            clear_spirit_bomb(caller)
-            
-            # Messages
-            caller.msg(f"|rYou release the Spirit Bomb for {damage} damage!|n")
-            if results:
-                caller.location.msg_contents(
-                    f"{caller.key} releases a massive Spirit Bomb! " + " ".join(results),
-                    exclude=caller
-                )
-            else:
-                caller.location.msg_contents(
-                    f"{caller.key} releases a massive Spirit Bomb into the empty air!",
-                    exclude=caller
-                )
-                
-        elif args in {"cancel", "stop", "abort"}:
-            # Cancel the Spirit Bomb (can be interrupted)
-            if not sb.is_charging:
-                caller.msg("You aren't charging a Spirit Bomb!")
-                return
-            
-            # Interrupt - caster takes damage
-            result = sb.interrupt()
-            clear_spirit_bomb(caller)
-            caller.msg(f"|rThe Spirit Bomb dissipates violently, harming you for {result['self_damage']} damage!|n")
-            caller.location.msg_contents(
-                f"{caller.key}'s Spirit Bomb explodes in their face!",
-                exclude=caller
-            )
-            
+
+        # Get current coords
+        curr_coords = getattr(caller.db, "coords", (0, 0, 0))
+        new_coords = (
+            curr_coords[0] + vector[0],
+            curr_coords[1] + vector[1],
+            curr_coords[2] + vector[2],
+        )
+
+        # Task 7: Bounds checking (arbitrary for now, e.g. -500 to 500)
+        MAP_LIMIT = 500
+        if any(abs(c) > MAP_LIMIT for c in new_coords):
+            caller.msg("You cannot move any further in that direction.")
+            return
+
+        # Task 6: Find target room
+        from world.map_utils import get_room_at
+
+        target_room = get_room_at(*new_coords)
+
+        if target_room:
+            # If we were in a room but the new coords point to another room, move.
+            if caller.location != target_room:
+                caller.move_to(target_room)
+            caller.db.coords = new_coords
+            # caller.msg(f"You move {direction} to {new_coords}.")
+            # Evennia's at_post_move will handle the 'look' typically.
         else:
-            caller.msg("Usage: spiritbomb charge | release | cancel")
-
-
-class CmdFlurry(Command):
-    """
-    Execute a Flurry Attack - rapid multiple strikes.
-    """
-    key = "flurry"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
-        # Check technique level
-        if not FlurryAttack.can_trigger(caller):
-            caller.msg("Your technique level is too low to perform a Flurry Attack (need 5+).")
-            return
-        
-        # Check if in combat
-        if not getattr(caller, 'db', None) or not caller.db.combat_state:
-            caller.msg("You must be in combat to use Flurry Attack.")
-            return
-        
-        # Find target
-        if not self.args:
-            caller.msg("Usage: flurry <target>")
-            return
-        
-        target = _search_target(caller, self.args.strip())
-        if not target:
-            return
-        
-        # Check target is valid combatant
-        if not hasattr(target, 'take_damage'):
-            caller.msg("You can't attack that!")
-            return
-        
-        # Check is in same room
-        if target.location != caller.location:
-            caller.msg("That target isn't here.")
-            return
-        
-        # Base damage calculation
-        pl = caller.db.power_level or 100
-        base_damage = int(pl * 0.3)
-        
-        # Execute flurry
-        result = FlurryAttack.execute(caller, target, base_damage)
-        
-        if result:
-            msg = f"|yYou unleash a FLURRY of {result['num_strikes']} strikes!|n\n"
-            msg += "\n".join(result['messages'])
-            msg += f"\n|yTotal damage: {result['total_damage']}|n"
-            caller.msg(msg)
-            
-            target.msg(f"|r{caller.key} unleashes a flurry of strikes on you!|n")
-            caller.location.msg_contents(
-                f"{caller.key} unleashes a flurry of strikes on {target.key}!",
-                exclude=[caller, target]
-            )
-
-
-class CmdFuse(Command):
-    """
-    Accept or decline Namekian fusion offers.
-    """
-    key = "fuse"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        # Check if Namekian
-        race = getattr(caller.db, 'race', None)
-        if race != 'namekian':
-            caller.msg("Only Namekians can use fusion.")
-            return
-        
-        if args in {"accept", "yes"}:
-            offer_id = getattr(caller.db, 'pending_fusion_offer', None)
-            if not offer_id:
-                caller.msg("You have no pending fusion offers.")
-                return
-            
-            success, msg = accept_fusion(caller, offer_id)
-            caller.msg(msg)
-            if success:
-                caller.location.msg_contents(
-                    f"{caller.key} fuses with their partner! Their aura explodes with power!",
-                    exclude=caller
-                )
-            
-        elif args in {"decline", "no"}:
-            offer_id = getattr(caller.db, 'pending_fusion_offer', None)
-            if not offer_id:
-                caller.msg("You have no pending fusion offers.")
-                return
-            
-            success, msg = decline_fusion(caller, offer_id)
-            caller.msg(msg)
-            
-        elif args in {"unfuse", "separate"}:
-            success, msg = unfuse(caller)
-            caller.msg(msg)
-            if success:
-                caller.location.msg_contents(
-                    f"{caller.key} separates from their fusion partner.",
-                    exclude=caller
-                )
-            
-        elif args in {"status", "check"}:
-            status = get_fusion_status(caller)
-            if not status:
-                caller.msg("You are not currently fused.")
-            else:
-                caller.msg(
-                    f"Fused with: {status['partner']}\n"
-                    f"KI Bonus: {status['ki_bonus']}\n"
-                    f"Type: namekian_fusion"
-                )
-        else:
-            caller.msg("Usage: fuse accept | decline | unfuse | status")
-
-
-class CmdTimeskip(Command):
-    """
-    Teleport behind your target (requires 50% of target's PL).
-    """
-    key = "timeskip"
-    aliases = ["ts"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
-        if not self.args:
-            caller.msg("Usage: timeskip <target>")
-            return
-        
-        target = _search_target(caller, self.args.strip())
-        if not target:
-            return
-        
-        success, msg = timeskip(caller, target)
-        caller.msg(msg)
-        if success:
-            target.msg(f"{caller.key} appears behind you!")
-            caller.location.msg_contents(
-                f"{caller.key} vanishes and appears behind {target.key}!",
-                exclude=[caller, target]
-            )
+            # In this coordinate-based world, if no room exists, we block movement.
+            caller.msg(f"There is nothing in that direction ({new_coords}).")
 
 
 class CmdTeleport(Command):
     """
-    Save and teleport to locations.
+    Jump to specific coordinates.
+    Usage: teleport <x> <y> [z]
     """
+
     key = "teleport"
-    aliases = ["tp"]
-    locks = "cmd:all()"
+    aliases = ["tpl"]
+    locks = "cmd:perm(Builders)"
     help_category = "DB"
 
     def func(self):
         caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            # Show saved locations
-            locations = get_saved_locations(caller)
-            if locations:
-                caller.msg("\n".join(locations))
-            else:
-                caller.msg("No saved locations. Use 'teleport save <name>' to save a location.")
-            return
-        
-        parts = args.split()
-        action = parts[0]
-        
-        if action == "save":
-            if len(parts) < 2:
-                caller.msg("Usage: teleport save <name>")
-                return
-            location_name = " ".join(parts[1:])
-            success, msg = save_teleport_location(caller, location_name)
-            caller.msg(msg)
-            
-        elif action == "to":
-            if len(parts) < 2:
-                caller.msg("Usage: teleport to <name>")
-                return
-            location_name = " ".join(parts[1:])
-            success, msg = teleport_to_location(caller, location_name)
-            caller.msg(msg)
-            
-        else:
-            # Try to teleport to location
-            success, msg = teleport_to_location(caller, args)
-            caller.msg(msg)
-
-
-class CmdInstantTransmission(Command):
-    """
-    Instant Transmission - teleport to an ally.
-    """
-    key = "instanttransmission"
-    aliases = ["it"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
-        target_name = self.args.strip() if self.args else None
-        
-        success, msg = instant_transmission(caller, target_name)
-        caller.msg(msg)
-        if success and target_name:
-            caller.location.msg_contents(
-                f"{caller.key} vanishes in a flash of light!",
-                exclude=caller
-            )
-
-
-class CmdDragonBall(Command):
-    """
-    Collect and manage Dragon Balls.
-    """
-    key = "dragonball"
-    aliases = ["db"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            # Show Dragon Ball status
-            status = get_dragon_ball_status(caller)
-            balls = status.get('collected', [])
-            msg = f"Dragon Balls collected: {status['count']}/7\n"
-            if balls:
-                msg += f"Balls: {', '.join(str(b) for b in balls)}\n"
-            else:
-                msg += "You have no Dragon Balls yet.\n"
-            
-            if status.get('shenron_active'):
-                msg += f"\n|cShenron is active! {status['wishes_remaining']} wishes remaining!|n\n"
-                msg += "Use 'wish <1-6>' to make a wish."
-            
-            caller.msg(msg)
-            return
-        
-        # Handle subcommands
-        parts = args.split()
-        action = parts[0]
-        
-        if action == "collect" and len(parts) > 1:
-            # For testing/giving - add a dragon ball
-            try:
-                ball_num = int(parts[1])
-                if 1 <= ball_num <= 7:
-                    add_dragon_ball(caller, ball_num)
-                    caller.msg(f"You obtained Dragon Ball #{ball_num}!")
-                else:
-                    caller.msg("Dragon Ball number must be 1-7.")
-            except:
-                caller.msg("Usage: dragonball collect <1-7>")
-        else:
-            caller.msg("Usage: dragonball [collect <n>|status]")
-
-
-class CmdSummonShenron(Command):
-    """
-    Summon Shenron when all 7 Dragon Balls are collected.
-    """
-    key = "summon_shenron"
-    aliases = ["summon"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
-        if not can_summon_shenron(caller):
-            status = get_dragon_ball_status(caller)
-            caller.msg(f"You need all 7 Dragon Balls to summon Shenron. You have {status['count']}/7.")
-            return
-        
-        success, msg = summon_shenron(caller)
-        caller.msg(msg)
-        
-        if success:
-            caller.location.msg_contents(
-                f"{caller.key} summons the eternal dragon Shenron! The sky darkens...",
-                exclude=caller
-            )
-
-
-class CmdWish(Command):
-    """
-    Make a wish from Shenron.
-    """
-    key = "wish"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
         if not self.args:
-            caller.msg("Usage: wish <1-6>\n1. Power Boost (+50% PL)\n2. Stat Increase (+20% all)\n3. Unlock Transformation\n4. Heal Full\n5. Revive Ally\n6. Knowledge (XP boost)")
+            caller.msg("Usage: teleport <x> <y> [z]")
             return
-        
+
+        args = self.args.strip().split()
         try:
-            wish_num = int(self.args.strip())
-        except:
-            caller.msg("Usage: wish <1-6>")
+            x = int(args[0])
+            y = int(args[1])
+            z = int(args[2]) if len(args) > 2 else 0
+        except (ValueError, IndexError):
+            caller.msg("Coordinates must be integers.")
             return
-        
-        if not 1 <= wish_num <= 6:
-            caller.msg("Wish number must be 1-6.")
-            return
-        
-        success, msg = make_wish(caller, wish_num)
-        caller.msg(msg)
 
+        from world.map_utils import get_room_at
 
-class CmdPlanetCracker(Command):
-    """
-    Use the devastating Planet Cracker technique.
-    Requires 1M+ PL, once per day, 10% success rate.
-    """
-    key = "planetcracker"
-    aliases = ["pc"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        
-        can_use, error = can_use_planet_cracker(caller)
-        if not can_use:
-            caller.msg(error)
-            return
-        
-        result = use_planet_cracker(caller)
-        caller.msg(result['message'])
-        
-        if result.get('success'):
-            caller.location.msg_contents(
-                f"{caller.key} unleashes a devastating PLANET CRACKER! The ground shakes!",
-                exclude=caller
-            )
-
-
-class CmdTrainWith(Command):
-    """
-    Train with master NPCs for XP bonuses.
-    """
-    key = "trainwith"
-    aliases = ["train"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            # Show available trainers
-            trainers = get_available_trainers(caller)
-            if not trainers:
-                caller.msg("No trainers available yet. Build up your PL!")
-                return
-            
-            msg = "|cAvailable Trainers:|n\n"
-            for t in trainers:
-                msg += f"  {t['name']} ({t['location']})\n"
-                msg += f"    Specialty: {t['specialty']}\n"
-                msg += f"    XP Bonus: {t['bonus']}x\n"
-                msg += f"    PL Required: {t['prereq_pl']:,}\n\n"
-            
-            msg += "Use 'trainwith <trainer>' to train."
-            caller.msg(msg)
-            return
-        
-        # Train with specific trainer
-        success, msg = train_with_npc(caller, args)
-        caller.msg(msg)
-
-
-# =============================================================================
-# STATUS EFFECTS COMMANDS
-# =============================================================================
-
-
-class CmdStatus(Command):
-    """
-    View your current status effects.
-    
-    Usage: status
-    
-    Shows all active buff and debuff effects currently affecting you.
-    """
-    key = "status"
-    aliases = ["effects", "affects"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.status_effects import get_status_display
-        caller = self.caller
-        caller.msg(get_status_display(caller))
-
-
-class CmdClearStatus(Command):
-    """
-    Clear status effects from yourself or a target.
-    
-    Usage: clearstatus [debuffs|buffs|all] [target]
-    
-    Examples:
-      clearstatus debuffs   - Remove all debuffs from yourself
-      clearstatus buffs     - Remove all buffs from yourself
-      clearstatus all       - Remove all effects from yourself
-      clearstatus all enemy - Remove all effects from enemy
-    """
-    key = "clearstatus"
-    aliases = ["cs", "cleanse", "dispel"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.status_effects import remove_all_debuffs, remove_all_buffs, remove_status
-        
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        # Parse arguments
-        parts = args.split() if args else ["debuffs"]
-        clear_type = parts[0]
-        target = None
-        
-        # Check for target
-        if len(parts) > 1:
-            target_name = " ".join(parts[1:])
-            target = caller.search(target_name)
-            if not target:
-                return
+        target_room = get_room_at(x, y, z)
+        if target_room:
+            caller.move_to(target_room)
+            caller.db.coords = (x, y, z)
+            caller.msg(f"Teleported to ({x}, {y}, {z}).")
         else:
-            target = caller
-        
-        # Perform clear
-        if clear_type in ["debuff", "debuffs"]:
-            count = remove_all_debuffs(target)
-            caller.msg(f"Removed {count} debuffs from {target.name}.")
-        elif clear_type in ["buff", "buffs"]:
-            count = remove_all_buffs(target)
-            caller.msg(f"Removed {count} buffs from {target.name}.")
-        elif clear_type == "all":
-            debuffs = remove_all_debuffs(target)
-            buffs = remove_all_buffs(target)
-            caller.msg(f"Removed {debuffs} debuffs and {buffs} buffs from {target.name}.")
-        else:
-            caller.msg("Usage: clearstatus [debuffs|buffs|all] [target]")
+            caller.msg(f"No GridRoom exists at ({x}, {y}, {z}).")
 
 
-class CmdStatusInfo(Command):
-    """
-    View information about all status effects.
-    
-    Usage: statusinfo
-    
-    Shows a list of all available status effects and their descriptions.
-    """
-    key = "statusinfo"
-    aliases = ["si", "effectinfo"]
+class CmdNPCStress(Command):
+    key = "+npcstress"
     locks = "cmd:all()"
     help_category = "DB"
 
     def func(self):
-        from world.status_effects import get_all_status_info
         caller = self.caller
-        caller.msg(get_all_status_info())
+        try:
+            count = int(self.args.strip()) if self.args else 10
+        except ValueError:
+            count = 10
 
-
-# =============================================================================
-# INVENTORY & EQUIPMENT COMMANDS
-# =============================================================================
-
-
-class CmdInventory(Command):
-    """
-    View your inventory and equipment.
-    
-    Usage: inventory
-           inv
-    
-    Shows all items you are carrying and currently equipped.
-    """
-    key = "inventory"
-    aliases = ["inv", "i"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.inventory import get_inventory_display
-        caller = self.caller
-        caller.msg(get_inventory_display(caller))
-
-
-class CmdUse(Command):
-    """
-    Use an item from your inventory.
-    
-    Usage: use <item>
-    
-    Examples:
-      use senzu_bean   - Use a senzu bean
-      use energy_drink - Use an energy drink
-      use antidote     - Use an antidote to cure debuffs
-    """
-    key = "use"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.inventory import use_item, ITEM_DEFINITIONS
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            caller.msg("Usage: use <item>")
-            return
-        
-        success, msg = use_item(caller, args)
-        if success:
-            caller.msg(msg)
-        else:
-            caller.msg(f"|r{msg}|n")
-
-
-class CmdEquip(Command):
-    """
-    Equip an item from your inventory.
-    
-    Usage: equip <item>
-           equip <slot>
-    
-    Examples:
-      equip weighted_clothing_heavy
-      equip scouter
-      equip clothing   - See what's in clothing slot
-    """
-    key = "equip"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.inventory import equip_item, unequip_item, get_equipped, ITEM_DEFINITIONS
-        from world.status_effects import get_all_status_info
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            caller.msg("Usage: equip <item>")
-            return
-        
-        # Check for slot query
-        if args in ["clothing", "accessory", "pod"]:
-            current = get_equipped(caller, args)
-            if current:
-                item_def = ITEM_DEFINITIONS.get(current, {})
-                caller.msg(f"Currently equipped in {args}: {item_def.get('name', current)}")
-            else:
-                caller.msg(f"Nothing equipped in {args} slot.")
-            return
-        
-        success, msg = equip_item(caller, args)
-        if success:
-            caller.msg(f"|g{msg}|n")
-        else:
-            caller.msg(f"|r{msg}|n")
-
-
-class CmdUnequip(Command):
-    """
-    Unequip an item from a slot.
-    
-    Usage: unequip <slot>
-    
-    Examples:
-      unequip clothing
-      unequip accessory
-    """
-    key = "unequip"
-    aliases = ["uneq"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.inventory import unequip_item
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            caller.msg("Usage: unequip <clothing|accessory|pod>")
-            return
-        
-        if args not in ["clothing", "accessory", "pod"]:
-            caller.msg("Invalid slot. Use: clothing, accessory, or pod")
-            return
-        
-        success, msg = unequip_item(caller, args)
-        if success:
-            caller.msg(f"|g{msg}|n")
-        else:
-            caller.msg(f"|r{msg}|n")
-
-
-class CmdDrop(Command):
-    """
-    Drop an item from your inventory.
-    
-    Usage: drop <item> [amount]
-    
-    Examples:
-      drop senzu_bean
-      drop zeni 100
-    """
-    key = "drop"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.inventory import remove_item, get_item_count, ITEM_DEFINITIONS
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        if not args:
-            caller.msg("Usage: drop <item> [amount]")
-            return
-        
-        parts = args.split()
-        item_key = parts[0]
-        quantity = int(parts[1]) if len(parts) > 1 else 1
-        
-        if not has_item(caller, item_key):
-            caller.msg("You don't have that item.")
-            return
-        
-        if remove_item(caller, item_key, quantity):
-            item_def = ITEM_DEFINITIONS.get(item_key, {})
-            name = item_def.get("name", item_key)
-            caller.msg(f"|yYou dropped {name} x{quantity}.|n")
-        else:
-            caller.msg("Failed to drop item.")
-
-
-# =============================================================================
-# PARTY SYSTEM COMMANDS
-# =============================================================================
-
-
-class CmdParty(Command):
-    """
-    Manage party/team functionality.
-    
-    Usage:
-      party                 - Show party info
-      party create <name>   - Create new party
-      party invite <player> - Invite player
-      party accept          - Accept invitation
-      party decline         - Decline invitation
-      party leave           - Leave party
-      party kick <player>   - Kick player (leader)
-      party info            - View party info
-      party chat <msg>      - Chat with party
-    
-    Party Benefits:
-      - XP sharing bonuses (25-50%)
-      - Damage bonuses when fighting together
-      - Party buffs
-    """
-    key = "party"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.party_system import PartyCommand
-        caller = self.caller
-        result = PartyCommand.handle(caller, self.args)
-        if result:
-            caller.msg(result)
-
-
-# =============================================================================
-# WORLD BOSS COMMANDS
-# =============================================================================
-
-
-class CmdBoss(Command):
-    """
-    Manage World Boss events.
-    
-    Usage:
-      boss              - Show boss status
-      boss info         - Show boss status
-      boss attack       - Join the fight
-      boss list         - List available bosses
-    
-    World Bosses:
-      - Frieza (Tier 1): Cold-blooded emperor
-      - Cell (Tier 2): Perfect bio-weapon  
-      - Buu (Tier 3): Innocent evil
-    
-    Bosses spawn every 2 hours. Form a party and defeat them together!
-    """
-    key = "boss"
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.world_boss import BossCommand
-        caller = self.caller
-        result = BossCommand.handle(caller, self.args)
-        if result:
-            caller.msg(result)
-
-
-# =============================================================================
-# FACTION/GUILD COMMANDS
-# =============================================================================
-
-
-class CmdFaction(Command):
-    """
-    Manage faction/guild membership.
-    
-    Usage:
-      faction              - Show your faction info
-      faction list         - List all factions
-      faction join <name> - Join a faction
-      faction leave       - Leave your faction
-      faction info        - View faction details
-      faction reputation  - Check your reputation
-      faction techniques  - View faction techniques
-    
-    Factions:
-      - Saiyan Army: Combat & transformation bonuses
-      - Capsule Corp: Technology & item bonuses
-      - Red Ribbon Army: Military & Zeni bonuses
-      - Kame House: Technique mastery bonuses
-      - Namekian Clan: Ki & regeneration bonuses
-    """
-    key = "faction"
-    aliases = ["guild", "clan"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.guild_system import FactionCommand
-        caller = self.caller
-        result = FactionCommand.handle(caller, self.args)
-        if result:
-            caller.msg(result)
-
-
-# =============================================================================
-# HYPERBOLIC TIME CHAMBER COMMANDS
-# =============================================================================
-
-
-class CmdHTC(Command):
-    """
-    Manage Hyperbolic Time Chamber.
-    
-    Usage:
-      htc              - Show HTC status
-      htc enter       - Enter the HTC
-      htc exit        - Exit the HTC
-      htc gravity <1-100> - Set gravity
-    
-    The Hyperbolic Time Chamber provides 10x XP gain.
-    Requires gravity_charge item to enter.
-    """
-    key = "htc"
-    aliases = ["chamber", "timechamber"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.hyperbolic_time_chamber import HTCCommand
-        caller = self.caller
-        result = HTCCommand.handle(caller, self.args)
-        if result:
-            caller.msg(result)
-
-
-# =============================================================================
-# FLIGHT SYSTEM COMMANDS
-# =============================================================================
-
-
-class CmdFly(Command):
-    """
-    Take to the skies and fly.
-    
-    Usage:
-      fly              - Take off into the air
-      fly north/south/east/west/up/down - Fly in a direction
-      fly to <place>  - Fast travel to unlocked location
-      
-    Flight States (PL requirements):
-      Levitate:   1,000 PL - Hover above ground
-      Flying:     5,000 PL - Full flight, 2x speed
-      Super Speed: 50,000 PL - 3x speed, blur through air
-    
-    Examples:
-      fly
-      fly north
-      fly to kame_house
-    """
-    key = "fly"
-    aliases = ["fly", "hover", "soar"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.flight_system import FlightCommand, take_off, fly_direction, fly_to_location
-        from world.flight_system import get_flight_state, FlightState
-        
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        # No args - take off
-        if not args:
-            current_state = get_flight_state(caller)
-            if current_state != FlightState.GROUND:
-                caller.msg("You are already flying!")
-                return
-            
-            success, msg = take_off(caller)
-            if success:
-                caller.msg(msg)
-            else:
-                caller.msg(f"|r{msg}|n")
-            return
-        
-        # Handle specific directions
-        direction_map = {
-            "n": "north", "north": "north",
-            "s": "south", "south": "south",
-            "e": "east", "east": "east",
-            "w": "west", "west": "west",
-            "u": "up", "up": "up",
-            "d": "down", "down": "down",
-        }
-        
-        if args in direction_map:
-            success, msg = fly_direction(caller, args)
-            caller.msg(msg if success else f"|r{msg}|n")
-            return
-        
-        # Handle "fly to <location>"
-        if args.startswith("to "):
-            location_name = args[3:].strip().lower().replace(" ", "_")
-            success, msg = fly_to_location(caller, location_name)
-            caller.msg(msg if success else f"|r{msg}|n")
-            return
-        
-        # Show help
-        caller.msg(self.__doc__)
-
-
-class CmdLand(Command):
-    """
-    Land on the ground from flight.
-    
-    Usage:
-      land
-    
-    Returns you safely to the ground.
-    Warning: Landing in combat may leave you vulnerable!
-    """
-    key = "land"
-    aliases = ["land", "descend", "ground"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.flight_system import land, get_flight_state, FlightState
-        
-        caller = self.caller
-        current_state = get_flight_state(caller)
-        
-        if current_state == FlightState.GROUND:
-            caller.msg("You are already on the ground.")
-            return
-        
-        success, msg = land(caller)
-        caller.msg(msg if success else f"|r{msg}|n")
-
-
-class CmdFlightStatus(Command):
-    """
-    Check your current flight status.
-    
-    Usage:
-      flight status
-      flight list
-    
-    Shows your current flight state, speed, and available
-    fast travel points.
-    """
-    key = "flight"
-    aliases = ["flight", "flight status", "flight list", "flying"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.flight_system import FlightCommand
-        from world.flight_system import get_flight_status, get_fast_travel_list
-        
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else "status"
-        
-        if args == "list" or args == "travel":
-            caller.msg(get_fast_travel_list(caller))
-        else:
-            caller.msg(get_flight_status(caller))
-
-
-# =============================================================================
-# MENTOR SYSTEM COMMANDS
-# =============================================================================
-
-
-class CmdMentor(Command):
-    """
-    Interact with mentor system to learn techniques.
-    
-    Usage:
-      mentor              - Show available mentors
-      mentor list        - List all masters in the world
-      learn <technique>  - Learn a technique from a mentor
-    
-    Masters:
-      - Master Roshi: Kamehameha, Turtle Stance
-      - King Kai: Kaioken, Spirit Ball
-      - Piccolo: Special Beam Cannon, Light Grenade
-      - And many more!
-    
-    Each master teaches unique techniques. Some require
-    faction membership or quest completion.
-    """
-    key = "mentor"
-    aliases = ["mentor", "learn", "masters"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.mentor_system import MentorCommand, learn_technique
-        
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        # Handle "learn <technique>"
-        if self.cmdstring == "learn" or args.startswith("learn "):
-            if args.startswith("learn "):
-                tech = args[6:].strip().lower().replace(" ", "_")
-            else:
-                caller.msg("Learn what? Usage: learn <technique_name>")
-                return
-            
-            success, msg = learn_technique(caller, tech)
-            caller.msg(msg if success else f"|r{msg}|n")
-            return
-        
-        # Handle mentor command
-        result = MentorCommand.handle(caller, args)
-        if result:
-            caller.msg(result)
-
-
-# =============================================================================
-# FRIENDS SYSTEM COMMANDS
-# =============================================================================
-
-
-class CmdFriend(Command):
-    """
-    Manage your friends list.
-    
-    Usage:
-      friend              - View friends list
-      friend add <name>   - Add a friend
-      friend remove <name> - Remove a friend
-      friend msg <name> <msg> - Send message to friend
-    
-    Friends can see when you're online and you can
-    send quick messages to them.
-    """
-    key = "friend"
-    aliases = ["friend", "friends", "flist"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.friends_system import FriendsCommand
-        
-        caller = self.caller
-        args = self.args.strip().lower() if self.args else ""
-        
-        result = FriendsCommand.handle(caller, args)
-        if result:
-            caller.msg(result)
-
-
-# =============================================================================
-# DUNGEON SYSTEM COMMANDS
-# =============================================================================
-
-
-class CmdDungeon(Command):
-    """
-    Manage dungeon exploration.
-    
-    Usage:
-      dungeon              - Show current dungeon status
-      dungeon list         - List available dungeons
-      dungeon enter <name> - Enter a dungeon
-      dungeon exit        - Exit current dungeon
-      dungeon floor       - Show floor details
-    
-    Dungeons:
-      - Muscle Tower: Red Ribbon Army fortress (5 floors)
-      - Kaiō's Test: Otherworld training (5 floors)
-      - Heart of Namek: Defend the village (3 floors)
-      - Baba's Mansion: Haunted spirit realm (7 floors)
-      - Capsule Corp Lab: Android confrontation (4 floors)
-    
-    Each floor has enemies to defeat. Boss on final floor!
-    """
-    key = "dungeon"
-    aliases = ["dungeon", "dung"]
-    locks = "cmd:all()"
-    help_category = "DB"
-
-    def func(self):
-        from world.dungeon_system import DungeonCommand
-        caller = self.caller
-        result = DungeonCommand.handle(caller, self.args)
-        if result:
-            caller.msg(result)
+        from typeclasses.npcs import create_test_npc
+        for i in range(count):
+            npc = create_test_npc(caller.location, template_key="test_even", name=f"StressBot_0{i}")
+            npc.db.test_ai = "stress_move"
+            npc.db.attack_interval = 0.5
+        caller.msg(f"Spawned {count} stress test bots.")

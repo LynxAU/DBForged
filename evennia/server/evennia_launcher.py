@@ -89,7 +89,6 @@ def get_servername_from_settings():
 # Operational setup
 
 SERVERNAME_DISPLAY = None  # Cached servername for display purposes
-
 SERVER_LOGFILE = None
 PORTAL_LOGFILE = None
 HTTP_LOGFILE = None

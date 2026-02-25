@@ -37,8 +37,10 @@ from evennia.settings_default import *
 # local/dev instances override via env var or secret_settings.py.
 SERVERNAME = os.environ.get("DBFORGED_SERVERNAME", "live")
 DBFORGED_VERSION = "0.1"
-DBFORGED_EMIT_CLIENT_EVENTS = False
+DBFORGED_EMIT_CLIENT_EVENTS = True
 
+# Port configuration is local-instance specific.
+# Keep repo defaults in main; use secret_settings.py for per-agent port overrides.
 # Use game-local cmdsets so DBForged commands mount correctly.
 CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"
 CMDSET_SESSION = "commands.default_cmdsets.SessionCmdSet"
@@ -59,15 +61,6 @@ GLOBAL_SCRIPTS = {
         "start_delay": True,
     }
 }
-
-# Default ports for shared/test instance (agents should override in secret_settings.py)
-TELNET_PORTS = [5143]
-WEBSERVER_PORTS = [(5144, 5148)]  # (proxy, django)
-WEBSOCKET_CLIENT_PORT = 5145
-SSL_PORTS = [5146]
-SSH_PORTS = [5147]
-AMP_PORT = 5149
-
 
 ######################################################################
 # Settings given in secret_settings.py override those in this file.

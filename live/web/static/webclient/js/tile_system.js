@@ -11,9 +11,13 @@
   const tileSystem = {
     tiles: new Map(),
     roomTiles: new Map(), // room_name -> tile map
+    serverGrid: new Map(), // "x,y" -> terrain
     loaded: false,
+    viewRadius: 10,
+    centerX: 0,
+    centerY: 0,
 
-    // Default tile mappings for rooms
+    // Default tile mappings for rooms (Fallback)
     defaultMappings: {
       "Kame Island": {
         "0,0": "water", "0,1": "water", "0,2": "water", "0,3": "water",
@@ -31,7 +35,7 @@
     async loadTiles() {
       if (this.loaded) return;
       
-      const spriteNames = ["sand", "water", "tree", "house", "house_interior", "sky"];
+      const spriteNames = ["sand", "water", "tree", "house", "house_interior", "sky", "grass", "mountain", "floor", "wall", "plain"];
       
       for (const name of spriteNames) {
         try {
@@ -56,40 +60,51 @@
       return this.tiles.get(name);
     },
 
-    // Get tile at position for a room
-    getRoomTileMap(roomName) {
-      return this.defaultMappings[roomName] || {};
+    // Update the grid from server map_data
+    updateFromMapData(packet) {
+      if (!packet || !packet.grid) return;
+      this.centerX = packet.center_x;
+      this.centerY = packet.center_y;
+      this.viewRadius = packet.radius;
+      
+      // We can either clear or merge. For now, clear to represent current view.
+      this.serverGrid.clear();
+      packet.grid.forEach(t => {
+        this.serverGrid.set(`${t.x},${t.y}`, t.terrain);
+      });
+      console.log(`[TileSystem] Grid updated: ${packet.grid.length} tiles`);
     },
 
-    // Get tile at x,y for a room
-    getTileAt(roomName, x, y) {
-      const map = this.getRoomTileMap(roomName);
+    // Get tile at x,y
+    getTileAt(x, y, roomName) {
+      const serverTile = this.serverGrid.get(`${x},${y}`);
+      if (serverTile) return serverTile;
+
+      const map = this.defaultMappings[roomName] || {};
       const key = `${x},${y}`;
-      return map[key] || map["default"] || "sand";
+      return map[key] || map["default"] || "plain";
     },
 
-    // Render tiles for a room
-    render(ctx, roomName, viewportX, viewportY, viewWidth, viewHeight) {
-      if (!this.loaded || !roomName) return;
+    // Render tiles around a center point
+    render(ctx, roomName, viewportX, viewportY, viewWidth, viewHeight, center_x = 0, center_y = 0) {
+      if (!this.loaded) return;
 
-      const tileMap = this.getRoomTileMap(roomName);
-      if (!tileMap) return;
+      // If we have server data, we base rendering around that center
+      const cx = this.serverGrid.size > 0 ? this.centerX : center_x;
+      const cy = this.serverGrid.size > 0 ? this.centerY : center_y;
+      const radius = this.serverGrid.size > 0 ? this.viewRadius : 8;
 
-      // Calculate visible tile range
-      const startX = Math.max(0, Math.floor(viewportX / TILE_SIZE));
-      const startY = Math.max(0, Math.floor(viewportY / TILE_SIZE));
-      const endX = Math.min(MAP_WIDTH, Math.ceil((viewportX + viewWidth) / TILE_SIZE));
-      const endY = Math.min(MAP_HEIGHT, Math.ceil((viewportY + viewHeight) / TILE_SIZE));
-
-      for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < endX; x++) {
-          const key = `${x},${y}`;
-          const tileName = tileMap[key] || "sand";
+      for (let y = cy + radius; y >= cy - radius; y--) {
+        for (let x = cx - radius; x <= cx + radius; x++) {
+          const tileName = this.getTileAt(x, y, roomName);
           const tile = this.getTile(tileName);
           
           if (tile) {
-            const drawX = x * TILE_SIZE - viewportX;
-            const drawY = y * TILE_SIZE - viewportY;
+            // Calculate draw position relative to viewport
+            // This assumes canvas (0,0) corresponds to some world coordinate or viewport offset.
+            // For now, let's keep it simple: x/y coordinates mapped to tiles.
+            const drawX = (x - cx + radius) * TILE_SIZE;
+            const drawY = (cy + radius - y) * TILE_SIZE;
             ctx.drawImage(tile, drawX, drawY, TILE_SIZE, TILE_SIZE);
           }
         }
@@ -99,7 +114,7 @@
     // Simple debug - list all loaded tiles
     debug() {
       console.log("[TileSystem] Available tiles:", [...this.tiles.keys()]);
-      console.log("[TileSystem] Room mappings:", this.defaultMappings);
+      console.log("[TileSystem] Server grid size:", this.serverGrid.size);
     }
   };
 

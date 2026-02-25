@@ -55,13 +55,14 @@ def emit_entity_delta(entity, recipients=None):
         "eye_color": entity.db.eye_color or "black",
         "aura_color": entity.db.aura_color or "white",
     }
+    coords = getattr(entity.db, "coords", (0, 0, 0))
     payload = {
         "entity": {
             "id": entity.id,
             "name": entity.key,
             "room": entity.location.id if entity.location else None,
             "room_name": entity.location.key if entity.location else None,
-            "position": {"x": 0, "y": 0, "layer": 0},
+            "position": {"x": coords[0], "y": coords[1], "layer": coords[2]},
             "sprite_id": entity.db.sprite_id or "sprite_humanoid_default",
             "race": appearance["race"],
             "sex": appearance["sex"],
@@ -79,6 +80,34 @@ def emit_entity_delta(entity, recipients=None):
 
     # Also send a direct self-only packet for client HUD updates.
     emit_event(entity, "player_frame", payload)
+
+
+def emit_map_data(player, center_x, center_y, radius=15):
+    """
+    Sends a serialized grid of terrain data to the player.
+    """
+    from evennia.objects.models import ObjectDB
+    # Fetch GridRooms in the box
+    candidates = ObjectDB.objects.filter(db_typeclass_path__contains="GridRoom")
+    grid = []
+    z = player.db.coords[2] if player.db.coords and len(player.db.coords) > 2 else 0
+    
+    for r in candidates:
+        rc = r.db.coords
+        if rc and rc[2] == z and abs(rc[0] - center_x) <= radius and abs(rc[1] - center_y) <= radius:
+            grid.append({
+                "x": rc[0],
+                "y": rc[1],
+                "terrain": r.db.terrain or "plain"
+            })
+    
+    payload = {
+        "center_x": center_x,
+        "center_y": center_y,
+        "radius": radius,
+        "grid": grid
+    }
+    emit_event(player, "map_data", payload)
 
 
 def emit_combat_event(room, source, target, payload):
